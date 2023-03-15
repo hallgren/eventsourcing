@@ -15,7 +15,7 @@ import (
 )
 
 func TestSuite(t *testing.T) {
-	f := func(ser eventsourcing.Serializer) (eventsourcing.EventStore, func(), error) {
+	f := func(ser eventsourcing.Serializer[suite.FrequentFlierEvent]) (eventsourcing.EventStore[suite.FrequentFlierEvent], func(), error) {
 		// region createClient
 		settings, err := esdb.ParseConnectionString("esdb://localhost:2113?tls=false")
 		if err != nil {
@@ -31,5 +31,5 @@ func TestSuite(t *testing.T) {
 		return es, func() {
 		}, nil
 	}
-	suite.Test(t, f)
+	suite.Test[suite.FrequentFlierEvent](t, f)
 }

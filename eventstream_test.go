@@ -7,36 +7,42 @@ import (
 	"github.com/hallgren/eventsourcing"
 )
 
+type TheEvent interface{ theEvent() }
+
 type AnAggregate struct {
-	eventsourcing.AggregateRoot
+	eventsourcing.AggregateRoot[TheEvent]
 }
 
-func (a *AnAggregate) Transition(e eventsourcing.Event) {}
+func (a *AnAggregate) Transition(e eventsourcing.Event[TheEvent]) {}
 
 type AnEvent struct {
 	Name string
 }
 
+func (a *AnEvent) theEvent() {}
+
 type AnotherAggregate struct {
-	eventsourcing.AggregateRoot
+	eventsourcing.AggregateRoot[TheEvent]
 }
 
-func (a *AnotherAggregate) Transition(e eventsourcing.Event) {}
+func (a *AnotherAggregate) Transition(e eventsourcing.Event[TheEvent]) {}
 
 type AnotherEvent struct{}
 
-var event = eventsourcing.Event{Version: 123, Data: &AnEvent{Name: "123"}, AggregateType: "AnAggregate"}
-var otherEvent = eventsourcing.Event{Version: 456, Data: &AnotherEvent{}, AggregateType: "AnotherAggregate"}
+func (a *AnotherEvent) theEvent() {}
+
+var event = eventsourcing.Event[TheEvent]{Version: 123, Data: &AnEvent{Name: "123"}, AggregateType: "AnAggregate"}
+var otherEvent = eventsourcing.Event[TheEvent]{Version: 456, Data: &AnotherEvent{}, AggregateType: "AnotherAggregate"}
 
 func TestSubAll(t *testing.T) {
-	var streamEvent *eventsourcing.Event
-	e := eventsourcing.NewEventStream()
-	f := func(e eventsourcing.Event) {
+	var streamEvent *eventsourcing.Event[TheEvent]
+	e := eventsourcing.NewEventStream[TheEvent]()
+	f := func(e eventsourcing.Event[TheEvent]) {
 		streamEvent = &e
 	}
 	s := e.All(f)
 	defer s.Close()
-	e.Publish(AnAggregate{}.AggregateRoot, []eventsourcing.Event{event})
+	e.Publish(AnAggregate{}.AggregateRoot, []eventsourcing.Event[TheEvent]{event})
 
 	if streamEvent == nil {
 		t.Fatalf("should have received event")
@@ -47,15 +53,15 @@ func TestSubAll(t *testing.T) {
 }
 
 func TestSubSpecificEvent(t *testing.T) {
-	var streamEvent *eventsourcing.Event
-	e := eventsourcing.NewEventStream()
-	f := func(e eventsourcing.Event) {
+	var streamEvent *eventsourcing.Event[TheEvent]
+	e := eventsourcing.NewEventStream[TheEvent]()
+	f := func(e eventsourcing.Event[TheEvent]) {
 		streamEvent = &e
 	}
 
 	s := e.Event(f, &AnEvent{})
 	defer s.Close()
-	e.Publish(AnAggregate{}.AggregateRoot, []eventsourcing.Event{event})
+	e.Publish(AnAggregate{}.AggregateRoot, []eventsourcing.Event[TheEvent]{event})
 
 	if streamEvent == nil {
 		t.Fatalf("should have received event")
@@ -74,15 +80,15 @@ func TestSubAggregateID(t *testing.T) {
 	anOtherAggregate := AnotherAggregate{}
 	anOtherAggregate.SetID("456")
 
-	var streamEvent *eventsourcing.Event
-	e := eventsourcing.NewEventStream()
-	f := func(e eventsourcing.Event) {
+	var streamEvent *eventsourcing.Event[TheEvent]
+	e := eventsourcing.NewEventStream[TheEvent]()
+	f := func(e eventsourcing.Event[TheEvent]) {
 		streamEvent = &e
 	}
 	s := e.AggregateID(f, &anAggregate, &anOtherAggregate)
 	defer s.Close()
 	// update with event from the AnAggregate aggregate
-	e.Publish(anAggregate.AggregateRoot, []eventsourcing.Event{event})
+	e.Publish(anAggregate.AggregateRoot, []eventsourcing.Event[TheEvent]{event})
 	if streamEvent == nil {
 		t.Fatalf("should have received event")
 	}
@@ -91,23 +97,23 @@ func TestSubAggregateID(t *testing.T) {
 	}
 
 	// update with event from the AnotherAggregate aggregate
-	e.Publish(anOtherAggregate.AggregateRoot, []eventsourcing.Event{otherEvent})
+	e.Publish(anOtherAggregate.AggregateRoot, []eventsourcing.Event[TheEvent]{otherEvent})
 	if streamEvent.Version != otherEvent.Version {
 		t.Fatalf("wrong info in event got %q expected %q", streamEvent.Version, otherEvent.Version)
 	}
 }
 
 func TestSubAggregate(t *testing.T) {
-	var streamEvent *eventsourcing.Event
-	e := eventsourcing.NewEventStream()
-	f := func(e eventsourcing.Event) {
+	var streamEvent *eventsourcing.Event[TheEvent]
+	e := eventsourcing.NewEventStream[TheEvent]()
+	f := func(e eventsourcing.Event[TheEvent]) {
 		streamEvent = &e
 	}
 	s := e.Aggregate(f, &AnAggregate{}, &AnotherAggregate{})
 	defer s.Close()
 
 	// update with event from the AnAggregate aggregate
-	e.Publish(AnAggregate{}.AggregateRoot, []eventsourcing.Event{event})
+	e.Publish(AnAggregate{}.AggregateRoot, []eventsourcing.Event[TheEvent]{event})
 	if streamEvent == nil {
 		t.Fatalf("should have received event")
 	}
@@ -116,23 +122,23 @@ func TestSubAggregate(t *testing.T) {
 	}
 
 	// update with event from the AnotherAggregate aggregate
-	e.Publish(AnotherAggregate{}.AggregateRoot, []eventsourcing.Event{otherEvent})
+	e.Publish(AnotherAggregate{}.AggregateRoot, []eventsourcing.Event[TheEvent]{otherEvent})
 	if streamEvent.Version != otherEvent.Version {
 		t.Fatalf("wrong info in event got %q expected %q", streamEvent.Version, otherEvent.Version)
 	}
 }
 
 func TestSubSpecificEventMultiplePublish(t *testing.T) {
-	var streamEvents []*eventsourcing.Event
-	e := eventsourcing.NewEventStream()
-	f := func(e eventsourcing.Event) {
+	var streamEvents []*eventsourcing.Event[TheEvent]
+	e := eventsourcing.NewEventStream[TheEvent]()
+	f := func(e eventsourcing.Event[TheEvent]) {
 		streamEvents = append(streamEvents, &e)
 	}
 
 	s := e.Event(f, &AnEvent{}, &AnotherEvent{})
 	defer s.Close()
-	e.Publish(AnAggregate{}.AggregateRoot, []eventsourcing.Event{event})
-	e.Publish(AnotherAggregate{}.AggregateRoot, []eventsourcing.Event{otherEvent})
+	e.Publish(AnAggregate{}.AggregateRoot, []eventsourcing.Event[TheEvent]{event})
+	e.Publish(AnotherAggregate{}.AggregateRoot, []eventsourcing.Event[TheEvent]{otherEvent})
 
 	if streamEvents == nil {
 		t.Fatalf("should have received event")
@@ -153,6 +159,8 @@ func TestSubSpecificEventMultiplePublish(t *testing.T) {
 	}
 
 	type AnEvent2 struct {
+		TheEvent
+
 		Name string
 	}
 	switch ev := streamEvents[0].Data.(type) {
@@ -163,14 +171,14 @@ func TestSubSpecificEventMultiplePublish(t *testing.T) {
 }
 
 func TestUpdateNoneSubscribedEvent(t *testing.T) {
-	var streamEvent *eventsourcing.Event = nil
-	e := eventsourcing.NewEventStream()
-	f := func(e eventsourcing.Event) {
+	var streamEvent *eventsourcing.Event[TheEvent] = nil
+	e := eventsourcing.NewEventStream[TheEvent]()
+	f := func(e eventsourcing.Event[TheEvent]) {
 		streamEvent = &e
 	}
 	s := e.Event(f, &AnotherEvent{})
 	defer s.Close()
-	e.Publish(AnAggregate{}.AggregateRoot, []eventsourcing.Event{event})
+	e.Publish(AnAggregate{}.AggregateRoot, []eventsourcing.Event[TheEvent]{event})
 
 	if streamEvent != nil {
 		t.Fatalf("should not have received event %q", streamEvent)
@@ -178,26 +186,26 @@ func TestUpdateNoneSubscribedEvent(t *testing.T) {
 }
 
 func TestManySubscribers(t *testing.T) {
-	streamEvent1 := make([]eventsourcing.Event, 0)
-	streamEvent2 := make([]eventsourcing.Event, 0)
-	streamEvent3 := make([]eventsourcing.Event, 0)
-	streamEvent4 := make([]eventsourcing.Event, 0)
-	streamEvent5 := make([]eventsourcing.Event, 0)
+	streamEvent1 := make([]eventsourcing.Event[TheEvent], 0)
+	streamEvent2 := make([]eventsourcing.Event[TheEvent], 0)
+	streamEvent3 := make([]eventsourcing.Event[TheEvent], 0)
+	streamEvent4 := make([]eventsourcing.Event[TheEvent], 0)
+	streamEvent5 := make([]eventsourcing.Event[TheEvent], 0)
 
-	e := eventsourcing.NewEventStream()
-	f1 := func(e eventsourcing.Event) {
+	e := eventsourcing.NewEventStream[TheEvent]()
+	f1 := func(e eventsourcing.Event[TheEvent]) {
 		streamEvent1 = append(streamEvent1, e)
 	}
-	f2 := func(e eventsourcing.Event) {
+	f2 := func(e eventsourcing.Event[TheEvent]) {
 		streamEvent2 = append(streamEvent2, e)
 	}
-	f3 := func(e eventsourcing.Event) {
+	f3 := func(e eventsourcing.Event[TheEvent]) {
 		streamEvent3 = append(streamEvent3, e)
 	}
-	f4 := func(e eventsourcing.Event) {
+	f4 := func(e eventsourcing.Event[TheEvent]) {
 		streamEvent4 = append(streamEvent4, e)
 	}
-	f5 := func(e eventsourcing.Event) {
+	f5 := func(e eventsourcing.Event[TheEvent]) {
 		streamEvent5 = append(streamEvent5, e)
 	}
 
@@ -212,7 +220,7 @@ func TestManySubscribers(t *testing.T) {
 	s = e.Aggregate(f5, &AnAggregate{})
 	defer s.Close()
 
-	e.Publish(AnAggregate{}.AggregateRoot, []eventsourcing.Event{event})
+	e.Publish(AnAggregate{}.AggregateRoot, []eventsourcing.Event[TheEvent]{event})
 
 	if len(streamEvent1) != 0 {
 		t.Fatalf("stream1 should not have any events")
@@ -236,17 +244,17 @@ func TestManySubscribers(t *testing.T) {
 }
 
 func TestParallelPublish(t *testing.T) {
-	streamEvent := make([]eventsourcing.Event, 0)
-	e := eventsourcing.NewEventStream()
+	streamEvent := make([]eventsourcing.Event[TheEvent], 0)
+	e := eventsourcing.NewEventStream[TheEvent]()
 
 	// functions to bind to event subscription
-	f1 := func(e eventsourcing.Event) {
+	f1 := func(e eventsourcing.Event[TheEvent]) {
 		streamEvent = append(streamEvent, e)
 	}
-	f2 := func(e eventsourcing.Event) {
+	f2 := func(e eventsourcing.Event[TheEvent]) {
 		streamEvent = append(streamEvent, e)
 	}
-	f3 := func(e eventsourcing.Event) {
+	f3 := func(e eventsourcing.Event[TheEvent]) {
 		streamEvent = append(streamEvent, e)
 	}
 
@@ -262,17 +270,17 @@ func TestParallelPublish(t *testing.T) {
 	for i := 1; i < 1000; i++ {
 		wg.Add(2)
 		go func() {
-			e.Publish(AnotherAggregate{}.AggregateRoot, []eventsourcing.Event{otherEvent, otherEvent})
+			e.Publish(AnotherAggregate{}.AggregateRoot, []eventsourcing.Event[TheEvent]{otherEvent, otherEvent})
 			wg.Done()
 		}()
 		go func() {
-			e.Publish(AnAggregate{}.AggregateRoot, []eventsourcing.Event{event, event})
+			e.Publish(AnAggregate{}.AggregateRoot, []eventsourcing.Event[TheEvent]{event, event})
 			wg.Done()
 		}()
 	}
 	wg.Wait()
 
-	var lastEvent eventsourcing.Event
+	var lastEvent eventsourcing.Event[TheEvent]
 	// check that event comes coupled together in four due to the lock in the event stream that makes sure all registered
 	// functions are called together and that is not mixed with other events
 	for j, event := range streamEvent {
@@ -288,8 +296,8 @@ func TestParallelPublish(t *testing.T) {
 
 func TestClose(t *testing.T) {
 	count := 0
-	e := eventsourcing.NewEventStream()
-	f := func(e eventsourcing.Event) {
+	e := eventsourcing.NewEventStream[TheEvent]()
+	f := func(e eventsourcing.Event[TheEvent]) {
 		count++
 	}
 	s1 := e.All(f)
@@ -299,7 +307,7 @@ func TestClose(t *testing.T) {
 	s5 := e.All(f)
 
 	// trigger all 5 subscriptions
-	e.Publish(AnAggregate{}.AggregateRoot, []eventsourcing.Event{event})
+	e.Publish(AnAggregate{}.AggregateRoot, []eventsourcing.Event[TheEvent]{event})
 	if count != 5 {
 		t.Fatalf("should have received 5 event")
 	}
@@ -311,17 +319,17 @@ func TestClose(t *testing.T) {
 	s5.Close()
 
 	// new event should not trigger closed subscriptions
-	e.Publish(AnAggregate{}.AggregateRoot, []eventsourcing.Event{event})
+	e.Publish(AnAggregate{}.AggregateRoot, []eventsourcing.Event[TheEvent]{event})
 	if count != 5 {
 		t.Fatalf("should not have received event after subscriptions are closed")
 	}
 }
 
 func TestName(t *testing.T) {
-	var streamEvent eventsourcing.Event
+	var streamEvent eventsourcing.Event[TheEvent]
 	var count int
-	e := eventsourcing.NewEventStream()
-	f := func(e eventsourcing.Event) {
+	e := eventsourcing.NewEventStream[TheEvent]()
+	f := func(e eventsourcing.Event[TheEvent]) {
 		count++
 		streamEvent = e
 	}
@@ -334,7 +342,7 @@ func TestName(t *testing.T) {
 	// not triggered
 	s3 := e.Name(f, "AnAggregate2", "AnEvent")
 	defer s3.Close()
-	e.Publish(AnAggregate{}.AggregateRoot, []eventsourcing.Event{event})
+	e.Publish(AnAggregate{}.AggregateRoot, []eventsourcing.Event[TheEvent]{event})
 
 	if streamEvent.Version != event.Version {
 		t.Fatalf("wrong info in event got %q expected %q", streamEvent.Version, event.Version)
@@ -343,8 +351,8 @@ func TestName(t *testing.T) {
 		t.Fatalf("should have received event data")
 	}
 
-	streamEvent = eventsourcing.Event{}
-	e.Publish(AnotherAggregate{}.AggregateRoot, []eventsourcing.Event{otherEvent})
+	streamEvent = eventsourcing.Event[TheEvent]{}
+	e.Publish(AnotherAggregate{}.AggregateRoot, []eventsourcing.Event[TheEvent]{otherEvent})
 	if streamEvent.Version != 0 {
 		t.Fatalf("expected zero value")
 	}

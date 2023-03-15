@@ -7,15 +7,15 @@ import (
 )
 
 // EventIterator is the interface an event store Get needs to return
-type EventIterator interface {
-	Next() (Event, error)
+type EventIterator[T any] interface {
+	Next() (Event[T], error)
 	Close()
 }
 
 // EventStore interface expose the methods an event store must uphold
-type EventStore interface {
-	Save(events []Event) error
-	Get(ctx context.Context, id string, aggregateType string, afterVersion Version) (EventIterator, error)
+type EventStore[T any] interface {
+	Save(events []Event[T]) error
+	Get(ctx context.Context, id string, aggregateType string, afterVersion Version) (EventIterator[T], error)
 }
 
 // SnapshotStore interface expose the methods an snapshot store must uphold
@@ -25,17 +25,17 @@ type SnapshotStore interface {
 }
 
 // Aggregate interface to use the aggregate root specific methods
-type Aggregate interface {
-	Root() *AggregateRoot
-	Transition(event Event)
+type Aggregate[T any] interface {
+	Root() *AggregateRoot[T]
+	Transition(event Event[T])
 }
 
-type EventSubscribers interface {
-	All(f func(e Event)) *subscription
-	AggregateID(f func(e Event), aggregates ...Aggregate) *subscription
-	Aggregate(f func(e Event), aggregates ...Aggregate) *subscription
-	Event(f func(e Event), events ...interface{}) *subscription
-	Name(f func(e Event), aggregate string, events ...string) *subscription
+type EventSubscribers[T any] interface {
+	All(f func(e Event[T])) *subscription[T]
+	AggregateID(f func(e Event[T]), aggregates ...Aggregate[T]) *subscription[T]
+	Aggregate(f func(e Event[T]), aggregates ...Aggregate[T]) *subscription[T]
+	Event(f func(e Event[T]), events ...interface{}) *subscription[T]
+	Name(f func(e Event[T]), aggregate string, events ...string) *subscription[T]
 }
 
 // ErrSnapshotNotFound returns if snapshot not found
@@ -45,28 +45,28 @@ var ErrSnapshotNotFound = errors.New("snapshot not found")
 var ErrAggregateNotFound = errors.New("aggregate not found")
 
 // Repository is the returned instance from the factory function
-type Repository struct {
-	eventStream *EventStream
-	eventStore  EventStore
-	snapshot    *SnapshotHandler
+type Repository[T any] struct {
+	eventStream *EventStream[T]
+	eventStore  EventStore[T]
+	snapshot    *SnapshotHandler[T]
 }
 
 // NewRepository factory function
-func NewRepository(eventStore EventStore, snapshot *SnapshotHandler) *Repository {
-	return &Repository{
+func NewRepository[T any](eventStore EventStore[T], snapshot *SnapshotHandler[T]) *Repository[T] {
+	return &Repository[T]{
 		eventStore:  eventStore,
 		snapshot:    snapshot,
-		eventStream: NewEventStream(),
+		eventStream: NewEventStream[T](),
 	}
 }
 
 // Subscribers returns an interface with all event subscribers
-func (r *Repository) Subscribers() EventSubscribers {
+func (r *Repository[T]) Subscribers() EventSubscribers[T] {
 	return r.eventStream
 }
 
 // Save an aggregates events
-func (r *Repository) Save(aggregate Aggregate) error {
+func (r *Repository[T]) Save(aggregate Aggregate[T]) error {
 	root := aggregate.Root()
 	// use under laying event slice to set GlobalVersion
 	err := r.eventStore.Save(root.aggregateEvents)
@@ -82,7 +82,7 @@ func (r *Repository) Save(aggregate Aggregate) error {
 }
 
 // SaveSnapshot saves the current state of the aggregate but only if it has no unsaved events
-func (r *Repository) SaveSnapshot(aggregate Aggregate) error {
+func (r *Repository[T]) SaveSnapshot(aggregate Aggregate[T]) error {
 	if r.snapshot == nil {
 		return errors.New("no snapshot store has been initialized")
 	}
@@ -93,7 +93,7 @@ func (r *Repository) SaveSnapshot(aggregate Aggregate) error {
 // If there is a snapshot store try fetch a snapshot of the aggregate and fetch event after the
 // version of the aggregate if any
 // The event fetching can be canceled from the outside.
-func (r *Repository) GetWithContext(ctx context.Context, id string, aggregate Aggregate) error {
+func (r *Repository[T]) GetWithContext(ctx context.Context, id string, aggregate Aggregate[T]) error {
 	if reflect.ValueOf(aggregate).Kind() != reflect.Ptr {
 		return errors.New("aggregate needs to be a pointer")
 	}
@@ -134,7 +134,7 @@ func (r *Repository) GetWithContext(ctx context.Context, id string, aggregate Ag
 				return nil
 			}
 			// apply the event on the aggregate
-			root.BuildFromHistory(aggregate, []Event{event})
+			root.BuildFromHistory(aggregate, []Event[T]{event})
 		}
 	}
 }
@@ -142,6 +142,6 @@ func (r *Repository) GetWithContext(ctx context.Context, id string, aggregate Ag
 // Get fetches the aggregates event and build up the aggregate
 // If there is a snapshot store try fetch a snapshot of the aggregate and fetch event after the
 // version of the aggregate if any
-func (r *Repository) Get(id string, aggregate Aggregate) error {
+func (r *Repository[T]) Get(id string, aggregate Aggregate[T]) error {
 	return r.GetWithContext(context.Background(), id, aggregate)
 }

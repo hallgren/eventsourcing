@@ -7,48 +7,48 @@ import (
 )
 
 // EventStream struct that handles event subscription
-type EventStream struct {
+type EventStream[T any] struct {
 	// makes sure events are delivered in order and subscriptions are persistent
 	lock sync.Mutex
 
 	// holds subscribers of aggregate types events
-	aggregateTypes map[string][]*subscription
+	aggregateTypes map[string][]*subscription[T]
 	// holds subscribers of specific aggregates (type and identifier)
-	specificAggregates map[string][]*subscription
+	specificAggregates map[string][]*subscription[T]
 	// holds subscribers of specific events
-	specificEvents map[reflect.Type][]*subscription
+	specificEvents map[reflect.Type][]*subscription[T]
 	// holds subscribers of all events
-	all []*subscription
+	all []*subscription[T]
 	// holds subscribers of aggregate and events by name
-	names map[string][]*subscription
+	names map[string][]*subscription[T]
 }
 
 // subscription holds the event function to be triggered when an event is triggering the subscription,
 // it also hols a close function to end the subscription.
 // event matches the subscription
-type subscription struct {
-	eventF func(e Event)
+type subscription[T any] struct {
+	eventF func(e Event[T])
 	close  func()
 }
 
 // Close stops the subscription
-func (s *subscription) Close() {
+func (s *subscription[T]) Close() {
 	s.close()
 }
 
 // NewEventStream factory function
-func NewEventStream() *EventStream {
-	return &EventStream{
-		aggregateTypes:     make(map[string][]*subscription),
-		specificAggregates: make(map[string][]*subscription),
-		specificEvents:     make(map[reflect.Type][]*subscription),
-		all:                make([]*subscription, 0),
-		names:              make(map[string][]*subscription),
+func NewEventStream[T any]() *EventStream[T] {
+	return &EventStream[T]{
+		aggregateTypes:     make(map[string][]*subscription[T]),
+		specificAggregates: make(map[string][]*subscription[T]),
+		specificEvents:     make(map[reflect.Type][]*subscription[T]),
+		all:                make([]*subscription[T], 0),
+		names:              make(map[string][]*subscription[T]),
 	}
 }
 
 // Publish calls the functions that are subscribing to the event stream
-func (e *EventStream) Publish(agg AggregateRoot, events []Event) {
+func (e *EventStream[T]) Publish(agg AggregateRoot[T], events []Event[T]) {
 	// the lock prevent other event updates get mixed with this update
 	e.lock.Lock()
 	defer e.lock.Unlock()
@@ -63,12 +63,12 @@ func (e *EventStream) Publish(agg AggregateRoot, events []Event) {
 }
 
 // call functions that has registered for all events
-func (e *EventStream) allPublisher(event Event) {
+func (e *EventStream[T]) allPublisher(event Event[T]) {
 	publish(e.all, event)
 }
 
 // call functions that has registered for the specific event
-func (e *EventStream) specificEventPublisher(event Event) {
+func (e *EventStream[T]) specificEventPublisher(event Event[T]) {
 	ref := reflect.TypeOf(event.Data)
 	if subs, ok := e.specificEvents[ref]; ok {
 		publish(subs, event)
@@ -76,7 +76,7 @@ func (e *EventStream) specificEventPublisher(event Event) {
 }
 
 // call functions that has registered for the aggregate type events
-func (e *EventStream) aggregateTypePublisher(agg AggregateRoot, event Event) {
+func (e *EventStream[T]) aggregateTypePublisher(agg AggregateRoot[T], event Event[T]) {
 	ref := fmt.Sprintf("%s_%s", agg.path(), event.AggregateType)
 	if subs, ok := e.aggregateTypes[ref]; ok {
 		publish(subs, event)
@@ -84,7 +84,7 @@ func (e *EventStream) aggregateTypePublisher(agg AggregateRoot, event Event) {
 }
 
 // call functions that has registered for the aggregate type and ID events
-func (e *EventStream) specificAggregatesPublisher(agg AggregateRoot, event Event) {
+func (e *EventStream[T]) specificAggregatesPublisher(agg AggregateRoot[T], event Event[T]) {
 	// ref also include the package name ensuring that Aggregate Types can have the same name.
 	ref := fmt.Sprintf("%s_%s_%s", agg.path(), event.AggregateType, agg.ID())
 	if subs, ok := e.specificAggregates[ref]; ok {
@@ -93,7 +93,7 @@ func (e *EventStream) specificAggregatesPublisher(agg AggregateRoot, event Event
 }
 
 // call functions that has registered for the aggregate type events
-func (e *EventStream) namePublisher(event Event) {
+func (e *EventStream[T]) namePublisher(event Event[T]) {
 	ref := event.AggregateType + "_" + event.Reason()
 	if subs, ok := e.names[ref]; ok {
 		publish(subs, event)
@@ -101,8 +101,8 @@ func (e *EventStream) namePublisher(event Event) {
 }
 
 // All subscribe to all events that is stored in the repository
-func (e *EventStream) All(f func(e Event)) *subscription {
-	s := subscription{
+func (e *EventStream[T]) All(f func(e Event[T])) *subscription[T] {
+	s := subscription[T]{
 		eventF: f,
 	}
 	s.close = func() {
@@ -118,8 +118,8 @@ func (e *EventStream) All(f func(e Event)) *subscription {
 }
 
 // AggregateID subscribe to events that belongs to aggregate's based on its type and ID
-func (e *EventStream) AggregateID(f func(e Event), aggregates ...Aggregate) *subscription {
-	s := subscription{
+func (e *EventStream[T]) AggregateID(f func(e Event[T]), aggregates ...Aggregate[T]) *subscription[T] {
+	s := subscription[T]{
 		eventF: f,
 	}
 	s.close = func() {
@@ -146,8 +146,8 @@ func (e *EventStream) AggregateID(f func(e Event), aggregates ...Aggregate) *sub
 }
 
 // Aggregate subscribe to events based on the aggregate type
-func (e *EventStream) Aggregate(f func(e Event), aggregates ...Aggregate) *subscription {
-	s := subscription{
+func (e *EventStream[T]) Aggregate(f func(e Event[T]), aggregates ...Aggregate[T]) *subscription[T] {
+	s := subscription[T]{
 		eventF: f,
 	}
 	s.close = func() {
@@ -174,8 +174,8 @@ func (e *EventStream) Aggregate(f func(e Event), aggregates ...Aggregate) *subsc
 }
 
 // Event subscribe on specific application defined events based on type referencing.
-func (e *EventStream) Event(f func(e Event), events ...interface{}) *subscription {
-	s := subscription{
+func (e *EventStream[T]) Event(f func(e Event[T]), events ...interface{}) *subscription[T] {
+	s := subscription[T]{
 		eventF: f,
 	}
 	s.close = func() {
@@ -200,8 +200,8 @@ func (e *EventStream) Event(f func(e Event), events ...interface{}) *subscriptio
 
 // Name subscribe to aggregate name combined with event names. The Name subscriber makes it possible to subscribe to
 // events event if the aggregate and event types are within the current application context.
-func (e *EventStream) Name(f func(e Event), aggregate string, events ...string) *subscription {
-	s := subscription{
+func (e *EventStream[T]) Name(f func(e Event[T]), aggregate string, events ...string) *subscription[T] {
+	s := subscription[T]{
 		eventF: f,
 	}
 	s.close = func() {
@@ -224,7 +224,7 @@ func (e *EventStream) Name(f func(e Event), aggregate string, events ...string) 
 }
 
 // removes subscriptions with event function equal to nil
-func clean(items []*subscription) []*subscription {
+func clean[T any](items []*subscription[T]) []*subscription[T] {
 	for i, s := range items {
 		if s.eventF == nil {
 			items = append(items[:i], items[i+1:]...)
@@ -234,7 +234,7 @@ func clean(items []*subscription) []*subscription {
 }
 
 // publish event to all subscribers
-func publish(items []*subscription, e Event) {
+func publish[T any](items []*subscription[T], e Event[T]) {
 	for _, s := range items {
 		s.eventF(e)
 	}

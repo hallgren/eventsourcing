@@ -17,7 +17,7 @@ import (
 var seededRand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 func TestSuite(t *testing.T) {
-	f := func(ser eventsourcing.Serializer) (eventsourcing.EventStore, func(), error) {
+	f := func(ser eventsourcing.Serializer[suite.FrequentFlierEvent]) (eventsourcing.EventStore[suite.FrequentFlierEvent], func(), error) {
 		// use random int to get a new db on each test run
 		r := seededRand.Intn(999999999999)
 		db, err := sqldriver.Open("ramsql", fmt.Sprintf("%d", r))
@@ -38,5 +38,5 @@ func TestSuite(t *testing.T) {
 			es.Close()
 		}, nil
 	}
-	suite.Test(t, f)
+	suite.Test[suite.FrequentFlierEvent](t, f)
 }

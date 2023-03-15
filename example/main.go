@@ -2,24 +2,25 @@ package main
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/hallgren/eventsourcing"
 	"github.com/hallgren/eventsourcing/eventstore/memory"
-	"time"
 )
 
 func main() {
-	var c = make(chan eventsourcing.Event)
+	var c = make(chan eventsourcing.Event[FrequentFlierEvent])
 	// Setup a memory based event store
-	eventStore := memory.Create()
-	repo := eventsourcing.NewRepository(eventStore, nil)
-	f := func(e eventsourcing.Event) {
+	eventStore := memory.Create[FrequentFlierEvent]()
+	repo := eventsourcing.NewRepository[FrequentFlierEvent](eventStore, nil)
+	f := func(e eventsourcing.Event[FrequentFlierEvent]) {
 		fmt.Printf("Event from stream %q\n", e)
 		// Its a good practice making this function as fast as possible not blocking the event sourcing call for to long
 		// Here we use a channel to store the events to be consumed async
 		c <- e
 	}
-	sub := repo.SubscriberAll(f)
-	sub.Subscribe()
+	sub := repo.Subscribers().All(f)
+	defer sub.Close()
 
 	// Read the event stream async
 	go func() {

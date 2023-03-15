@@ -22,40 +22,40 @@ type Snapshot struct {
 }
 
 // SnapshotAggregate is an Aggregate plus extra methods to help serialize into a snapshot
-type SnapshotAggregate interface {
-	Aggregate
+type SnapshotAggregate[T any] interface {
+	Aggregate[T]
 	Marshal(m MarshalSnapshotFunc) ([]byte, error)
 	Unmarshal(m UnmarshalSnapshotFunc, b []byte) error
 }
 
 // SnapshotHandler gets and saves snapshots
-type SnapshotHandler struct {
+type SnapshotHandler[T any] struct {
 	snapshotStore SnapshotStore
-	serializer    Serializer
+	serializer    Serializer[T]
 }
 
 // SnapshotNew constructs a SnapshotHandler
-func SnapshotNew(ss SnapshotStore, ser Serializer) *SnapshotHandler {
-	return &SnapshotHandler{
+func SnapshotNew[T any](ss SnapshotStore, ser Serializer[T]) *SnapshotHandler[T] {
+	return &SnapshotHandler[T]{
 		snapshotStore: ss,
 		serializer:    ser,
 	}
 }
 
 // Save transform an aggregate to a snapshot
-func (s *SnapshotHandler) Save(i interface{}) error {
-	sa, ok := i.(SnapshotAggregate)
+func (s *SnapshotHandler[T]) Save(i interface{}) error {
+	sa, ok := i.(SnapshotAggregate[T])
 	if ok {
 		return s.saveSnapshotAggregate(sa)
 	}
-	a, ok := i.(Aggregate)
+	a, ok := i.(Aggregate[T])
 	if ok {
 		return s.saveAggregate(a)
 	}
 	return errors.New("not an aggregate")
 }
 
-func (s *SnapshotHandler) saveSnapshotAggregate(sa SnapshotAggregate) error {
+func (s *SnapshotHandler[T]) saveSnapshotAggregate(sa SnapshotAggregate[T]) error {
 	root := sa.Root()
 	err := validate(*root)
 	if err != nil {
@@ -76,7 +76,7 @@ func (s *SnapshotHandler) saveSnapshotAggregate(sa SnapshotAggregate) error {
 	return s.snapshotStore.Save(snap)
 }
 
-func (s *SnapshotHandler) saveAggregate(sa Aggregate) error {
+func (s *SnapshotHandler[T]) saveAggregate(sa Aggregate[T]) error {
 	root := sa.Root()
 	err := validate(*root)
 	if err != nil {
@@ -98,21 +98,21 @@ func (s *SnapshotHandler) saveAggregate(sa Aggregate) error {
 }
 
 // Get fetch a snapshot and reconstruct an aggregate
-func (s *SnapshotHandler) Get(ctx context.Context, id string, i interface{}) error {
+func (s *SnapshotHandler[T]) Get(ctx context.Context, id string, i interface{}) error {
 	typ := reflect.TypeOf(i).Elem().Name()
 	snap, err := s.snapshotStore.Get(ctx, id, typ)
 	if err != nil {
 		return err
 	}
 	switch a := i.(type) {
-	case SnapshotAggregate:
+	case SnapshotAggregate[T]:
 		err := a.Unmarshal(s.serializer.Unmarshal, snap.State)
 		if err != nil {
 			return err
 		}
 		root := a.Root()
 		root.setInternals(snap.ID, snap.Version, snap.GlobalVersion)
-	case Aggregate:
+	case Aggregate[T]:
 		err = s.serializer.Unmarshal(snap.State, a)
 		if err != nil {
 			return err
@@ -126,7 +126,7 @@ func (s *SnapshotHandler) Get(ctx context.Context, id string, i interface{}) err
 }
 
 // validate make sure the aggregate is valid to be saved
-func validate(root AggregateRoot) error {
+func validate[T any](root AggregateRoot[T]) error {
 	if root.ID() == "" {
 		return ErrEmptyID
 	}

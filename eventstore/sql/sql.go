@@ -12,26 +12,26 @@ import (
 )
 
 // SQL event store handler
-type SQL struct {
+type SQL[T any] struct {
 	db         *sql.DB
-	serializer eventsourcing.Serializer
+	serializer eventsourcing.Serializer[T]
 }
 
 // Open connection to database
-func Open(db *sql.DB, serializer eventsourcing.Serializer) *SQL {
-	return &SQL{
+func Open[T any](db *sql.DB, serializer eventsourcing.Serializer[T]) *SQL[T] {
+	return &SQL[T]{
 		db:         db,
 		serializer: serializer,
 	}
 }
 
 // Close the connection
-func (s *SQL) Close() {
+func (s *SQL[T]) Close() {
 	s.db.Close()
 }
 
 // Save persists events to the database
-func (s *SQL) Save(events []eventsourcing.Event) error {
+func (s *SQL[T]) Save(events []eventsourcing.Event[T]) error {
 	// If no event return no error
 	if len(events) == 0 {
 		return nil
@@ -95,7 +95,7 @@ func (s *SQL) Save(events []eventsourcing.Event) error {
 }
 
 // Get the events from database
-func (s *SQL) Get(ctx context.Context, id string, aggregateType string, afterVersion eventsourcing.Version) (eventsourcing.EventIterator, error) {
+func (s *SQL[T]) Get(ctx context.Context, id string, aggregateType string, afterVersion eventsourcing.Version) (eventsourcing.EventIterator[T], error) {
 	selectStm := `Select seq, id, version, reason, type, timestamp, data, metadata from events where id=? and type=? and version>? order by version asc`
 	rows, err := s.db.QueryContext(ctx, selectStm, id, aggregateType, afterVersion)
 	if err != nil {
@@ -103,12 +103,12 @@ func (s *SQL) Get(ctx context.Context, id string, aggregateType string, afterVer
 	} else if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
-	i := iterator{rows: rows, serializer: s.serializer}
+	i := iterator[T]{rows: rows, serializer: s.serializer}
 	return &i, nil
 }
 
 // GlobalEvents return count events in order globally from the start posistion
-func (s *SQL) GlobalEvents(start, count uint64) ([]eventsourcing.Event, error) {
+func (s *SQL[T]) GlobalEvents(start, count uint64) ([]eventsourcing.Event[T], error) {
 	selectStm := `Select seq, id, version, reason, type, timestamp, data, metadata from events where seq >= ? order by seq asc LIMIT ?`
 	rows, err := s.db.Query(selectStm, start, count)
 	if err != nil {
@@ -118,8 +118,8 @@ func (s *SQL) GlobalEvents(start, count uint64) ([]eventsourcing.Event, error) {
 	return s.eventsFromRows(rows)
 }
 
-func (s *SQL) eventsFromRows(rows *sql.Rows) ([]eventsourcing.Event, error) {
-	var events []eventsourcing.Event
+func (s *SQL[T]) eventsFromRows(rows *sql.Rows) ([]eventsourcing.Event[T], error) {
+	var events []eventsourcing.Event[T]
 	for rows.Next() {
 		var globalVersion eventsourcing.Version
 		var eventMetadata map[string]interface{}
@@ -153,7 +153,7 @@ func (s *SQL) eventsFromRows(rows *sql.Rows) ([]eventsourcing.Event, error) {
 			}
 		}
 
-		events = append(events, eventsourcing.Event{
+		events = append(events, eventsourcing.Event[T]{
 			AggregateID:   id,
 			Version:       version,
 			GlobalVersion: globalVersion,

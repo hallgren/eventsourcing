@@ -16,7 +16,7 @@ type FrequentFlierAccount struct {
 
 // FrequentFlierAccountAggregate is the struct of frequent flier account aggregate
 type FrequentFlierAccountAggregate struct {
-	eventsourcing.AggregateRoot
+	eventsourcing.AggregateRoot[FrequentFlierEvent]
 	FrequentFlierAccount
 }
 
@@ -32,6 +32,8 @@ const (
 
 // go:generate stringer -type=Status
 
+type FrequentFlierEvent interface{ frequentFlier() }
+
 // FrequentFlierAccountCreated is the struct of frequent flier accounts created
 type FrequentFlierAccountCreated struct {
 	AccountID         string
@@ -39,10 +41,14 @@ type FrequentFlierAccountCreated struct {
 	OpeningTierPoints int
 }
 
+func (*FrequentFlierAccountCreated) frequentFlier() {}
+
 // StatusMatched is the struct of start matched
 type StatusMatched struct {
 	NewStatus Status
 }
+
+func (*StatusMatched) frequentFlier() {}
 
 // FlightTaken is the struct of flight taken
 type FlightTaken struct {
@@ -50,8 +56,12 @@ type FlightTaken struct {
 	TierPointsAdded int
 }
 
+func (*FlightTaken) frequentFlier() {}
+
 // PromotedToGoldStatus promoted to gold status
 type PromotedToGoldStatus struct{}
+
+func (*PromotedToGoldStatus) frequentFlier() {}
 
 // CreateFrequentFlierAccount constructor
 func CreateFrequentFlierAccount(id string) *FrequentFlierAccountAggregate {
@@ -62,7 +72,7 @@ func CreateFrequentFlierAccount(id string) *FrequentFlierAccountAggregate {
 
 // NewFrequentFlierAccountFromHistory creates a FrequentFlierAccount given a history
 // of the changes which have occurred for that account.
-func NewFrequentFlierAccountFromHistory(events []eventsourcing.Event) *FrequentFlierAccountAggregate {
+func NewFrequentFlierAccountFromHistory[T FrequentFlierEvent](events []eventsourcing.Event[FrequentFlierEvent]) *FrequentFlierAccountAggregate {
 	state := FrequentFlierAccountAggregate{}
 	state.BuildFromHistory(&state, events)
 	return &state
@@ -88,7 +98,7 @@ func (f *FrequentFlierAccountAggregate) RecordFlightTaken(miles int, tierPoints 
 
 // Transition implements the pattern match against event types used both as part
 // of the fold when loading from history and when tracking an individual change.
-func (f *FrequentFlierAccountAggregate) Transition(event eventsourcing.Event) {
+func (f *FrequentFlierAccountAggregate) Transition(event eventsourcing.Event[FrequentFlierEvent]) {
 
 	switch e := event.Data.(type) {
 

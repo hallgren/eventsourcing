@@ -1,6 +1,6 @@
 module github.com/hallgren/eventsourcing/eventstore/sql
 
-go 1.13
+go 1.18
 
 require (
 	github.com/hallgren/eventsourcing v0.0.20

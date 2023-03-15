@@ -20,27 +20,27 @@ func AggregateID() string {
 	return fmt.Sprintf("%d", r)
 }
 
-type eventstoreFunc = func(ser eventsourcing.Serializer) (eventsourcing.EventStore, func(), error)
+type eventstoreFunc[T FrequentFlierEvent] func(ser eventsourcing.Serializer[FrequentFlierEvent]) (eventsourcing.EventStore[FrequentFlierEvent], func(), error)
 
-func Test(t *testing.T, esFunc eventstoreFunc) {
+func Test[T FrequentFlierEvent](t *testing.T, esFunc eventstoreFunc[FrequentFlierEvent]) {
 	tests := []struct {
 		title string
-		run   func(es eventsourcing.EventStore) error
+		run   func(es eventsourcing.EventStore[FrequentFlierEvent]) error
 	}{
-		{"should save and get events", saveAndGetEvents},
-		{"should get events after version", getEventsAfterVersion},
-		{"should not save events from different aggregates", saveEventsFromMoreThanOneAggregate},
-		{"should not save events from different aggregate types", saveEventsFromMoreThanOneAggregateType},
-		{"should not save events in wrong order", saveEventsInWrongOrder},
-		{"should not save events in wrong version", saveEventsInWrongVersion},
-		{"should not save event with no reason", saveEventsWithEmptyReason},
-		{"should save and get event concurrently", saveAndGetEventsConcurrently},
-		{"should return error when no events", getErrWhenNoEvents},
-		{"should get global event order from save", saveReturnGlobalEventOrder},
+		{"should save and get events", saveAndGetEvents[T]},
+		{"should get events after version", getEventsAfterVersion[T]},
+		{"should not save events from different aggregates", saveEventsFromMoreThanOneAggregate[T]},
+		{"should not save events from different aggregate types", saveEventsFromMoreThanOneAggregateType[T]},
+		{"should not save events in wrong order", saveEventsInWrongOrder[T]},
+		{"should not save events in wrong version", saveEventsInWrongVersion[T]},
+		{"should not save event with no reason", saveEventsWithEmptyReason[T]},
+		{"should save and get event concurrently", saveAndGetEventsConcurrently[T]},
+		{"should return error when no events", getErrWhenNoEvents[T]},
+		{"should get global event order from save", saveReturnGlobalEventOrder[T]},
 	}
-	ser := eventsourcing.NewSerializer(json.Marshal, json.Unmarshal)
+	ser := eventsourcing.NewSerializer[FrequentFlierEvent](json.Marshal, json.Unmarshal)
 
-	ser.Register(&FrequentFlierAccount{},
+	_ = ser.Register(&FrequentFlierAccount[FrequentFlierEvent]{},
 		ser.Events(
 			&FrequentFlierAccountCreated{},
 			&FlightTaken{},
@@ -73,11 +73,13 @@ const (
 	StatusGold   Status = iota
 )
 
-type FrequentFlierAccount struct {
-	eventsourcing.AggregateRoot
+type FrequentFlierAccount[T FrequentFlierEvent] struct {
+	eventsourcing.AggregateRoot[T]
 }
 
-func (f *FrequentFlierAccount) Transition(e eventsourcing.Event) {}
+func (f *FrequentFlierAccount[T]) Transition(e eventsourcing.Event[T]) {}
+
+type FrequentFlierEvent interface{ frequentFlier() }
 
 type FrequentFlierAccountCreated struct {
 	AccountId         string
@@ -85,22 +87,28 @@ type FrequentFlierAccountCreated struct {
 	OpeningTierPoints int
 }
 
+func (f *FrequentFlierAccountCreated) frequentFlier() {}
+
 type StatusMatched struct {
 	NewStatus Status
 }
+
+func (f *StatusMatched) frequentFlier() {}
 
 type FlightTaken struct {
 	MilesAdded      int
 	TierPointsAdded int
 }
 
+func (f *FlightTaken) frequentFlier() {}
+
 var aggregateType = "FrequentFlierAccount"
 var timestamp = time.Now()
 
-func testEventsWithID(aggregateID string) []eventsourcing.Event {
+func testEventsWithID[T FrequentFlierEvent](aggregateID string) []eventsourcing.Event[FrequentFlierEvent] {
 	metadata := make(map[string]interface{})
 	metadata["test"] = "hello"
-	history := []eventsourcing.Event{
+	history := []eventsourcing.Event[FrequentFlierEvent]{
 		{AggregateID: aggregateID, Version: 1, AggregateType: aggregateType, Timestamp: timestamp, Data: &FrequentFlierAccountCreated{AccountId: "1234567", OpeningMiles: 10000, OpeningTierPoints: 0}, Metadata: metadata},
 		{AggregateID: aggregateID, Version: 2, AggregateType: aggregateType, Timestamp: timestamp, Data: &StatusMatched{NewStatus: StatusSilver}, Metadata: metadata},
 		{AggregateID: aggregateID, Version: 3, AggregateType: aggregateType, Timestamp: timestamp, Data: &FlightTaken{MilesAdded: 2525, TierPointsAdded: 5}, Metadata: metadata},
@@ -111,26 +119,26 @@ func testEventsWithID(aggregateID string) []eventsourcing.Event {
 	return history
 }
 
-func testEvents(aggregateID string) []eventsourcing.Event {
-	return testEventsWithID(aggregateID)
+func testEvents[T FrequentFlierEvent](aggregateID string) []eventsourcing.Event[FrequentFlierEvent] {
+	return testEventsWithID[T](aggregateID)
 }
 
-func testEventsPartTwo(aggregateID string) []eventsourcing.Event {
-	history := []eventsourcing.Event{
+func testEventsPartTwo[T FrequentFlierEvent](aggregateID string) []eventsourcing.Event[FrequentFlierEvent] {
+	history := []eventsourcing.Event[FrequentFlierEvent]{
 		{AggregateID: aggregateID, Version: 7, AggregateType: aggregateType, Timestamp: timestamp, Data: &FlightTaken{MilesAdded: 5600, TierPointsAdded: 5}},
 		{AggregateID: aggregateID, Version: 8, AggregateType: aggregateType, Timestamp: timestamp, Data: &FlightTaken{MilesAdded: 3000, TierPointsAdded: 3}},
 	}
 	return history
 }
 
-func testEventOtherAggregate(aggregateID string) eventsourcing.Event {
-	return eventsourcing.Event{AggregateID: aggregateID, Version: 1, AggregateType: aggregateType, Timestamp: timestamp, Data: &FrequentFlierAccountCreated{AccountId: "1234567", OpeningMiles: 10000, OpeningTierPoints: 0}}
+func testEventOtherAggregate[T FrequentFlierEvent](aggregateID string) eventsourcing.Event[FrequentFlierEvent] {
+	return eventsourcing.Event[FrequentFlierEvent]{AggregateID: aggregateID, Version: 1, AggregateType: aggregateType, Timestamp: timestamp, Data: &FrequentFlierAccountCreated{AccountId: "1234567", OpeningMiles: 10000, OpeningTierPoints: 0}}
 }
 
-func saveAndGetEvents(es eventsourcing.EventStore) error {
+func saveAndGetEvents[T FrequentFlierEvent](es eventsourcing.EventStore[FrequentFlierEvent]) error {
 	aggregateID := AggregateID()
-	events := testEvents(aggregateID)
-	fetchedEvents := []eventsourcing.Event{}
+	events := testEvents[FrequentFlierEvent](aggregateID)
+	fetchedEvents := []eventsourcing.Event[FrequentFlierEvent]{}
 	err := es.Save(events)
 	if err != nil {
 		return err
@@ -149,21 +157,23 @@ func saveAndGetEvents(es eventsourcing.EventStore) error {
 		}
 		fetchedEvents = append(fetchedEvents, event)
 	}
+
 	iterator.Close()
-	if len(fetchedEvents) != len(testEvents(aggregateID)) {
+	if len(fetchedEvents) != len(testEvents[FrequentFlierEvent](aggregateID)) {
 		return errors.New("wrong number of events returned")
 	}
 
-	if fetchedEvents[0].Version != testEvents(aggregateID)[0].Version {
+	if fetchedEvents[0].Version != testEvents[FrequentFlierEvent](aggregateID)[0].Version {
 		return errors.New("wrong events returned")
 	}
 
 	// Add more events to the same aggregate event stream
-	err = es.Save(testEventsPartTwo(aggregateID))
+	eventsTwo := testEventsPartTwo[FrequentFlierEvent](aggregateID)
+	err = es.Save(eventsTwo)
 	if err != nil {
 		return err
 	}
-	fetchedEventsIncludingPartTwo := []eventsourcing.Event{}
+	fetchedEventsIncludingPartTwo := []eventsourcing.Event[FrequentFlierEvent]{}
 	iterator, err = es.Get(context.Background(), aggregateID, aggregateType, 0)
 	if err != nil {
 		return err
@@ -177,23 +187,23 @@ func saveAndGetEvents(es eventsourcing.EventStore) error {
 	}
 	iterator.Close()
 
-	if len(fetchedEventsIncludingPartTwo) != len(append(testEvents(aggregateID), testEventsPartTwo(aggregateID)...)) {
+	if len(fetchedEventsIncludingPartTwo) != len(append(testEvents[T](aggregateID), testEventsPartTwo[FrequentFlierEvent](aggregateID)...)) {
 		return errors.New("wrong number of events returned")
 	}
 
-	if fetchedEventsIncludingPartTwo[0].Version != testEvents(aggregateID)[0].Version {
+	if fetchedEventsIncludingPartTwo[0].Version != testEvents[FrequentFlierEvent](aggregateID)[0].Version {
 		return errors.New("wrong event version returned")
 	}
 
-	if fetchedEventsIncludingPartTwo[0].AggregateID != testEvents(aggregateID)[0].AggregateID {
+	if fetchedEventsIncludingPartTwo[0].AggregateID != testEvents[FrequentFlierEvent](aggregateID)[0].AggregateID {
 		return errors.New("wrong event aggregateID returned")
 	}
 
-	if fetchedEventsIncludingPartTwo[0].AggregateType != testEvents(aggregateID)[0].AggregateType {
+	if fetchedEventsIncludingPartTwo[0].AggregateType != testEvents[FrequentFlierEvent](aggregateID)[0].AggregateType {
 		return errors.New("wrong event aggregateType returned")
 	}
 
-	if fetchedEventsIncludingPartTwo[0].Reason() != testEvents(aggregateID)[0].Reason() {
+	if fetchedEventsIncludingPartTwo[0].Reason() != testEvents[FrequentFlierEvent](aggregateID)[0].Reason() {
 		return errors.New("wrong event aggregateType returned")
 	}
 
@@ -201,7 +211,7 @@ func saveAndGetEvents(es eventsourcing.EventStore) error {
 		return errors.New("wrong event meta data returned")
 	}
 
-	data, ok := fetchedEventsIncludingPartTwo[0].Data.(*FrequentFlierAccountCreated)
+	data, ok := any(fetchedEventsIncludingPartTwo[0].Data).(*FrequentFlierAccountCreated)
 	if !ok {
 		return errors.New("wrong type in Data")
 	}
@@ -212,10 +222,10 @@ func saveAndGetEvents(es eventsourcing.EventStore) error {
 	return nil
 }
 
-func getEventsAfterVersion(es eventsourcing.EventStore) error {
-	var fetchedEvents []eventsourcing.Event
+func getEventsAfterVersion[T FrequentFlierEvent](es eventsourcing.EventStore[FrequentFlierEvent]) error {
+	var fetchedEvents []eventsourcing.Event[FrequentFlierEvent]
 	aggregateID := AggregateID()
-	err := es.Save(testEvents(aggregateID))
+	err := es.Save(testEvents[FrequentFlierEvent](aggregateID))
 	if err != nil {
 		return err
 	}
@@ -234,8 +244,8 @@ func getEventsAfterVersion(es eventsourcing.EventStore) error {
 	}
 	iterator.Close()
 	// Should return one less event
-	if len(fetchedEvents) != len(testEvents(aggregateID))-1 {
-		return fmt.Errorf("wrong number of events returned exp: %d, got:%d", len(fetchedEvents), len(testEvents(aggregateID))-1)
+	if len(fetchedEvents) != len(testEvents[T](aggregateID))-1 {
+		return fmt.Errorf("wrong number of events returned exp: %d, got:%d", len(fetchedEvents), len(testEvents[T](aggregateID))-1)
 	}
 	// first event version should be 2
 	if fetchedEvents[0].Version != 2 {
@@ -244,10 +254,10 @@ func getEventsAfterVersion(es eventsourcing.EventStore) error {
 	return nil
 }
 
-func saveEventsFromMoreThanOneAggregate(es eventsourcing.EventStore) error {
+func saveEventsFromMoreThanOneAggregate[T FrequentFlierEvent](es eventsourcing.EventStore[FrequentFlierEvent]) error {
 	aggregateID := AggregateID()
 	aggregateIDOther := AggregateID()
-	invalidEvent := append(testEvents(aggregateID), testEventOtherAggregate(aggregateIDOther))
+	invalidEvent := append(testEvents[FrequentFlierEvent](aggregateID), testEventOtherAggregate[FrequentFlierEvent](aggregateIDOther))
 	err := es.Save(invalidEvent)
 	if err == nil {
 		return errors.New("should not be able to save events that belongs to more than one aggregate")
@@ -255,9 +265,9 @@ func saveEventsFromMoreThanOneAggregate(es eventsourcing.EventStore) error {
 	return nil
 }
 
-func saveEventsFromMoreThanOneAggregateType(es eventsourcing.EventStore) error {
+func saveEventsFromMoreThanOneAggregateType[T FrequentFlierEvent](es eventsourcing.EventStore[FrequentFlierEvent]) error {
 	aggregateID := AggregateID()
-	events := testEvents(aggregateID)
+	events := testEvents[FrequentFlierEvent](aggregateID)
 	events[1].AggregateType = "OtherAggregateType"
 
 	err := es.Save(events)
@@ -267,9 +277,9 @@ func saveEventsFromMoreThanOneAggregateType(es eventsourcing.EventStore) error {
 	return nil
 }
 
-func saveEventsInWrongOrder(es eventsourcing.EventStore) error {
+func saveEventsInWrongOrder[T FrequentFlierEvent](es eventsourcing.EventStore[FrequentFlierEvent]) error {
 	aggregateID := AggregateID()
-	events := append(testEvents(aggregateID), testEvents(aggregateID)[0])
+	events := append(testEvents[FrequentFlierEvent](aggregateID), testEvents[FrequentFlierEvent](aggregateID)[0])
 	err := es.Save(events)
 	if err == nil {
 		return errors.New("should not be able to save events that are in wrong version order")
@@ -277,9 +287,9 @@ func saveEventsInWrongOrder(es eventsourcing.EventStore) error {
 	return nil
 }
 
-func saveEventsInWrongVersion(es eventsourcing.EventStore) error {
+func saveEventsInWrongVersion[T FrequentFlierEvent](es eventsourcing.EventStore[FrequentFlierEvent]) error {
 	aggregateID := AggregateID()
-	events := testEventsPartTwo(aggregateID)
+	events := testEventsPartTwo[FrequentFlierEvent](aggregateID)
 	err := es.Save(events)
 	if err == nil {
 		return errors.New("should not be able to save events that are out of sync compared to the storage order")
@@ -287,9 +297,9 @@ func saveEventsInWrongVersion(es eventsourcing.EventStore) error {
 	return nil
 }
 
-func saveEventsWithEmptyReason(es eventsourcing.EventStore) error {
+func saveEventsWithEmptyReason[T FrequentFlierEvent](es eventsourcing.EventStore[FrequentFlierEvent]) error {
 	aggregateID := AggregateID()
-	events := testEvents(aggregateID)
+	events := testEvents[FrequentFlierEvent](aggregateID)
 	events[2].Data = nil
 	err := es.Save(events)
 	if err == nil {
@@ -298,14 +308,14 @@ func saveEventsWithEmptyReason(es eventsourcing.EventStore) error {
 	return nil
 }
 
-func saveAndGetEventsConcurrently(es eventsourcing.EventStore) error {
+func saveAndGetEventsConcurrently[T FrequentFlierEvent](es eventsourcing.EventStore[FrequentFlierEvent]) error {
 	wg := sync.WaitGroup{}
 	var err error
 	aggregateID := AggregateID()
 
 	wg.Add(10)
 	for i := 0; i < 10; i++ {
-		events := testEventsWithID(fmt.Sprintf("%s-%d", aggregateID, i))
+		events := testEventsWithID[FrequentFlierEvent](fmt.Sprintf("%s-%d", aggregateID, i))
 		go func() {
 			e := es.Save(events)
 			if e != nil {
@@ -329,7 +339,7 @@ func saveAndGetEventsConcurrently(es eventsourcing.EventStore) error {
 				err = e
 				return
 			}
-			events := make([]eventsourcing.Event, 0)
+			events := make([]eventsourcing.Event[FrequentFlierEvent], 0)
 			for {
 				event, err := iterator.Next()
 				if err != nil {
@@ -351,7 +361,7 @@ func saveAndGetEventsConcurrently(es eventsourcing.EventStore) error {
 	return nil
 }
 
-func getErrWhenNoEvents(es eventsourcing.EventStore) error {
+func getErrWhenNoEvents[T FrequentFlierEvent](es eventsourcing.EventStore[FrequentFlierEvent]) error {
 	aggregateID := AggregateID()
 	iterator, err := es.Get(context.Background(), aggregateID, aggregateType, 0)
 	if err != nil {
@@ -368,10 +378,10 @@ func getErrWhenNoEvents(es eventsourcing.EventStore) error {
 	return nil
 }
 
-func saveReturnGlobalEventOrder(es eventsourcing.EventStore) error {
+func saveReturnGlobalEventOrder[T FrequentFlierEvent](es eventsourcing.EventStore[FrequentFlierEvent]) error {
 	aggregateID := AggregateID()
 	aggregateID2 := AggregateID()
-	events := testEvents(aggregateID)
+	events := testEvents[T](aggregateID)
 	err := es.Save(events)
 	if err != nil {
 		return err
@@ -379,7 +389,7 @@ func saveReturnGlobalEventOrder(es eventsourcing.EventStore) error {
 	if events[len(events)-1].GlobalVersion == 0 {
 		return fmt.Errorf("expected global event order > 0 on last event got %d", events[len(events)-1].GlobalVersion)
 	}
-	events2 := []eventsourcing.Event{testEventOtherAggregate(aggregateID2)}
+	events2 := []eventsourcing.Event[FrequentFlierEvent]{testEventOtherAggregate[T](aggregateID2)}
 	err = es.Save(events2)
 	if err != nil {
 		return err

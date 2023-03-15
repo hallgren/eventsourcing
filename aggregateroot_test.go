@@ -11,10 +11,14 @@ import (
 
 // Person aggregate
 type Person struct {
-	eventsourcing.AggregateRoot
+	eventsourcing.AggregateRoot[PersonEvent]
 	Name string
 	Age  int
 	Dead int
+}
+
+type PersonEvent interface {
+	personEvent()
 }
 
 // Born event
@@ -22,9 +26,13 @@ type Born struct {
 	Name string
 }
 
+func (*Born) personEvent() {}
+
 // AgedOneYear event
 type AgedOneYear struct {
 }
+
+func (*AgedOneYear) personEvent() {}
 
 // CreatePerson constructor for the Person
 func CreatePerson(name string) (*Person, error) {
@@ -61,7 +69,7 @@ func (person *Person) GrowOlder() {
 }
 
 // Transition the person state dependent on the events
-func (person *Person) Transition(event eventsourcing.Event) {
+func (person *Person) Transition(event eventsourcing.Event[PersonEvent]) {
 	switch e := event.Data.(type) {
 	case *Born:
 		person.Age = 0

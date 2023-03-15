@@ -7,13 +7,13 @@ import (
 	"github.com/hallgren/eventsourcing"
 )
 
-type iterator struct {
+type iterator[T any] struct {
 	rows       *sql.Rows
-	serializer eventsourcing.Serializer
+	serializer eventsourcing.Serializer[T]
 }
 
 // Next return the next event
-func (i *iterator) Next() (eventsourcing.Event, error) {
+func (i *iterator[T]) Next() (eventsourcing.Event[T], error) {
 	var globalVersion eventsourcing.Version
 	var eventMetadata map[string]interface{}
 	var version eventsourcing.Version
@@ -21,17 +21,17 @@ func (i *iterator) Next() (eventsourcing.Event, error) {
 	var data, metadata string
 	if !i.rows.Next() {
 		if err := i.rows.Err(); err != nil {
-			return eventsourcing.Event{}, err
+			return eventsourcing.Event[T]{}, err
 		}
-		return eventsourcing.Event{}, eventsourcing.ErrNoMoreEvents
+		return eventsourcing.Event[T]{}, eventsourcing.ErrNoMoreEvents
 	}
 	if err := i.rows.Scan(&globalVersion, &id, &version, &reason, &typ, &timestamp, &data, &metadata); err != nil {
-		return eventsourcing.Event{}, err
+		return eventsourcing.Event[T]{}, err
 	}
 
 	t, err := time.Parse(time.RFC3339, timestamp)
 	if err != nil {
-		return eventsourcing.Event{}, err
+		return eventsourcing.Event[T]{}, err
 	}
 
 	f, ok := i.serializer.Type(typ, reason)
@@ -43,16 +43,16 @@ func (i *iterator) Next() (eventsourcing.Event, error) {
 	eventData := f()
 	err = i.serializer.Unmarshal([]byte(data), &eventData)
 	if err != nil {
-		return eventsourcing.Event{}, err
+		return eventsourcing.Event[T]{}, err
 	}
 	if metadata != "" {
 		err = i.serializer.Unmarshal([]byte(metadata), &eventMetadata)
 		if err != nil {
-			return eventsourcing.Event{}, err
+			return eventsourcing.Event[T]{}, err
 		}
 	}
 
-	event := eventsourcing.Event{
+	event := eventsourcing.Event[T]{
 		AggregateID:   id,
 		Version:       version,
 		GlobalVersion: globalVersion,
@@ -65,6 +65,6 @@ func (i *iterator) Next() (eventsourcing.Event, error) {
 }
 
 // Close closes the iterator
-func (i *iterator) Close() {
+func (i *iterator[T]) Close() {
 	i.rows.Close()
 }

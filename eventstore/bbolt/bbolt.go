@@ -24,9 +24,9 @@ func itob(v uint64) []byte {
 }
 
 // BBolt is the eventstore handler
-type BBolt struct {
-	db         *bbolt.DB                // The bbolt db where we store everything
-	serializer eventsourcing.Serializer // The serializer
+type BBolt[T any] struct {
+	db         *bbolt.DB                   // The bbolt db where we store everything
+	serializer eventsourcing.Serializer[T] // The serializer
 }
 
 type boltEvent struct {
@@ -42,7 +42,7 @@ type boltEvent struct {
 
 // MustOpenBBolt opens the event stream found in the given file. If the file is not found it will be created and
 // initialized. Will panic if it has problems persisting the changes to the filesystem.
-func MustOpenBBolt(dbFile string, s eventsourcing.Serializer) *BBolt {
+func MustOpenBBolt[T any](dbFile string, s eventsourcing.Serializer[T]) *BBolt[T] {
 	db, err := bbolt.Open(dbFile, 0600, &bbolt.Options{
 		Timeout: 1 * time.Second,
 	})
@@ -60,14 +60,14 @@ func MustOpenBBolt(dbFile string, s eventsourcing.Serializer) *BBolt {
 	if err != nil {
 		panic(err)
 	}
-	return &BBolt{
+	return &BBolt[T]{
 		db:         db,
 		serializer: s,
 	}
 }
 
 // Save an aggregate (its events)
-func (e *BBolt) Save(events []eventsourcing.Event) error {
+func (e *BBolt[T]) Save(events []eventsourcing.Event[T]) error {
 	// Return if there is no events to save
 	if len(events) == 0 {
 		return nil
@@ -98,7 +98,7 @@ func (e *BBolt) Save(events []eventsourcing.Event) error {
 	cursor := evBucket.Cursor()
 	k, obj := cursor.Last()
 	if k != nil {
-		lastEvent := eventsourcing.Event{}
+		lastEvent := struct{ Version eventsourcing.Version }{}
 		err := e.serializer.Unmarshal(obj, &lastEvent)
 		if err != nil {
 			return errors.New(fmt.Sprintf("could not serialize event, %v", err))
@@ -171,7 +171,7 @@ func (e *BBolt) Save(events []eventsourcing.Event) error {
 }
 
 // Get aggregate events
-func (e *BBolt) Get(ctx context.Context, id string, aggregateType string, afterVersion eventsourcing.Version) (eventsourcing.EventIterator, error) {
+func (e *BBolt[T]) Get(ctx context.Context, id string, aggregateType string, afterVersion eventsourcing.Version) (eventsourcing.EventIterator[T], error) {
 	bucketName := aggregateKey(aggregateType, id)
 
 	tx, err := e.db.Begin(false)
@@ -179,14 +179,14 @@ func (e *BBolt) Get(ctx context.Context, id string, aggregateType string, afterV
 		return nil, err
 	}
 	firstEvent := afterVersion + 1
-	i := iterator{tx: tx, bucketName: bucketName, firstEventIndex: uint64(firstEvent), serializer: e.serializer}
+	i := iterator[T]{tx: tx, bucketName: bucketName, firstEventIndex: uint64(firstEvent), serializer: e.serializer}
 	return &i, nil
 
 }
 
 // GlobalEvents return count events in order globally from the start posistion
-func (e *BBolt) GlobalEvents(start, count uint64) ([]eventsourcing.Event, error) {
-	var events []eventsourcing.Event
+func (e *BBolt[T]) GlobalEvents(start, count uint64) ([]eventsourcing.Event[T], error) {
+	var events []eventsourcing.Event[T]
 	tx, err := e.db.Begin(false)
 	if err != nil {
 		return nil, err
@@ -211,7 +211,7 @@ func (e *BBolt) GlobalEvents(start, count uint64) ([]eventsourcing.Event, error)
 		if err != nil {
 			return nil, errors.New(fmt.Sprintf("could not deserialize event data, %v", err))
 		}
-		event := eventsourcing.Event{
+		event := eventsourcing.Event[T]{
 			AggregateID:   bEvent.AggregateID,
 			AggregateType: bEvent.AggregateType,
 			Version:       eventsourcing.Version(bEvent.Version),
@@ -230,12 +230,12 @@ func (e *BBolt) GlobalEvents(start, count uint64) ([]eventsourcing.Event, error)
 }
 
 // Close closes the event stream and the underlying database
-func (e *BBolt) Close() error {
+func (e *BBolt[T]) Close() error {
 	return e.db.Close()
 }
 
 // CreateBucket creates a bucket
-func (e *BBolt) createBucket(bucketName []byte, tx *bbolt.Tx) error {
+func (e *BBolt[T]) createBucket(bucketName []byte, tx *bbolt.Tx) error {
 	// Ensure that we have a bucket named event_type for the given type
 	if _, err := tx.CreateBucketIfNotExists([]byte(bucketName)); err != nil {
 		return errors.New(fmt.Sprintf("could not create bucket for %s: %s", bucketName, err))

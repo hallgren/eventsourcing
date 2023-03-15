@@ -13,13 +13,19 @@ import (
 )
 
 type snapshot struct {
-	eventsourcing.AggregateRoot
+	eventsourcing.AggregateRoot[Events]
 	unexported string
 	Exported   string
 }
 
+type Events interface{ events() }
 type Event struct{}
+
+func (e *Event) events() {}
+
 type Event2 struct{}
+
+func (e *Event2) events() {}
 
 func New() *snapshot {
 	s := snapshot{}
@@ -31,7 +37,7 @@ func (s *snapshot) Command() {
 	s.TrackChange(s, &Event2{})
 }
 
-func (s *snapshot) Transition(e eventsourcing.Event) {
+func (s *snapshot) Transition(e eventsourcing.Event[Events]) {
 	switch e.Data.(type) {
 	case *Event:
 		s.unexported = "unexported"
@@ -67,11 +73,11 @@ func (s *snapshot) Unmarshal(m eventsourcing.UnmarshalSnapshotFunc, b []byte) er
 }
 
 func TestSnapshotNoneExported(t *testing.T) {
-	ser := eventsourcing.NewSerializer(xml.Marshal, xml.Unmarshal)
+	ser := eventsourcing.NewSerializer[Events](xml.Marshal, xml.Unmarshal)
 	s := eventsourcing.SnapshotNew(memory.New(), *ser)
 
 	// use repo to reset events on person to be able to save snapshot
-	repo := eventsourcing.NewRepository(memory2.Create(), s)
+	repo := eventsourcing.NewRepository[Events](memory2.Create[Events](), s)
 
 	snap := New()
 	repo.Save(snap)
@@ -99,11 +105,11 @@ func TestSnapshotNoneExported(t *testing.T) {
 }
 
 func TestSnapshot(t *testing.T) {
-	ser := eventsourcing.NewSerializer(xml.Marshal, xml.Unmarshal)
+	ser := eventsourcing.NewSerializer[PersonEvent](xml.Marshal, xml.Unmarshal)
 	s := eventsourcing.SnapshotNew(memory.New(), *ser)
 
 	// use repo to reset events on person to be able to save snapshot
-	repo := eventsourcing.NewRepository(memory2.Create(), s)
+	repo := eventsourcing.NewRepository[PersonEvent](memory2.Create[PersonEvent](), s)
 
 	person, err := CreatePersonWithID("123", "kalle")
 	if err != nil {
@@ -150,7 +156,7 @@ func TestSnapshot(t *testing.T) {
 	}
 }
 func TestGetNoneExistingSnapshot(t *testing.T) {
-	ser := eventsourcing.NewSerializer(xml.Marshal, xml.Unmarshal)
+	ser := eventsourcing.NewSerializer[Events](xml.Marshal, xml.Unmarshal)
 	s := eventsourcing.SnapshotNew(memsnap.New(), *ser)
 	p := Person{}
 	err := s.Get(context.Background(), "noneExistingID", &p)
@@ -160,7 +166,7 @@ func TestGetNoneExistingSnapshot(t *testing.T) {
 }
 
 func TestSaveEmptySnapshotID(t *testing.T) {
-	ser := eventsourcing.NewSerializer(xml.Marshal, xml.Unmarshal)
+	ser := eventsourcing.NewSerializer[Events](xml.Marshal, xml.Unmarshal)
 	s := eventsourcing.SnapshotNew(memsnap.New(), *ser)
 	p := Person{}
 	err := s.Save(&p)

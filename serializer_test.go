@@ -9,9 +9,9 @@ import (
 	"github.com/hallgren/eventsourcing"
 )
 
-func initSerializers(t *testing.T) []*eventsourcing.Serializer {
-	var result []*eventsourcing.Serializer
-	s := eventsourcing.NewSerializer(json.Marshal, json.Unmarshal)
+func initSerializers(t *testing.T) []*eventsourcing.Serializer[Data] {
+	var result []*eventsourcing.Serializer[Data]
+	s := eventsourcing.NewSerializer[Data](json.Marshal, json.Unmarshal)
 	err := s.Register(&SomeAggregate{}, s.Events(&SomeData{}, &SomeData2{}))
 	if err != nil {
 		t.Fatalf("could not register aggregate events %v", err)
@@ -21,20 +21,26 @@ func initSerializers(t *testing.T) []*eventsourcing.Serializer {
 }
 
 type SomeAggregate struct {
-	eventsourcing.AggregateRoot
+	eventsourcing.AggregateRoot[Data]
 }
 
-func (s *SomeAggregate) Transition(event eventsourcing.Event) {}
+func (s *SomeAggregate) Transition(event eventsourcing.Event[Data]) {}
+
+type Data interface{ data() }
 
 type SomeData struct {
 	A int
 	B string
 }
 
+func (*SomeData) data() {}
+
 type SomeData2 struct {
 	A int
 	B string
 }
+
+func (*SomeData2) data() {}
 
 var data = SomeData{
 	1,

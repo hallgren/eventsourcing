@@ -10,7 +10,7 @@ import (
 )
 
 func TestSuite(t *testing.T) {
-	f := func(ser eventsourcing.Serializer) (eventsourcing.EventStore, func(), error) {
+	f := func(ser eventsourcing.Serializer[suite.FrequentFlierEvent]) (eventsourcing.EventStore[suite.FrequentFlierEvent], func(), error) {
 		dbFile := "bolt.db"
 		es := bbolt.MustOpenBBolt(dbFile, ser)
 		return es, func() {
@@ -18,5 +18,6 @@ func TestSuite(t *testing.T) {
 			os.Remove(dbFile)
 		}, nil
 	}
-	suite.Test(t, f)
+
+	suite.Test[suite.FrequentFlierEvent](t, f)
 }

@@ -7,7 +7,7 @@ import (
 )
 
 func TestEvent(t *testing.T) {
-	e := eventsourcing.Event{
+	e := eventsourcing.Event[PersonEvent]{
 		Data: &Born{},
 	}
 	if e.Reason() != "Born" {
@@ -23,7 +23,7 @@ func TestDataAs(t *testing.T) {
 	b := Born{Name: "Jonathan"}
 	c := Created{}
 
-	e := eventsourcing.Event{
+	e := eventsourcing.Event[PersonEvent]{
 		Data: &b,
 	}
 	err := e.DataAs(&c)

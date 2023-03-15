@@ -12,20 +12,20 @@ import (
 const streamSeparator = "-"
 
 // ESDB is the event store handler
-type ESDB struct {
+type ESDB[T any] struct {
 	client      *esdb.Client
-	serializer  eventsourcing.Serializer
+	serializer  eventsourcing.Serializer[T]
 	contentType esdb.ContentType
 }
 
 // Open binds the event store db client
-func Open(client *esdb.Client, serializer eventsourcing.Serializer, jsonSerializer bool) *ESDB {
+func Open[T any](client *esdb.Client, serializer eventsourcing.Serializer[T], jsonSerializer bool) *ESDB[T] {
 	// defaults to binary
 	var contentType esdb.ContentType
 	if jsonSerializer {
 		contentType = esdb.ContentTypeJson
 	}
-	return &ESDB{
+	return &ESDB[T]{
 		client:      client,
 		serializer:  serializer,
 		contentType: contentType,
@@ -33,7 +33,7 @@ func Open(client *esdb.Client, serializer eventsourcing.Serializer, jsonSerializ
 }
 
 // Save persists events to the database
-func (es *ESDB) Save(events []eventsourcing.Event) error {
+func (es *ESDB[T]) Save(events []eventsourcing.Event[T]) error {
 	// If no event return no error
 	if len(events) == 0 {
 		return nil
@@ -93,7 +93,7 @@ func (es *ESDB) Save(events []eventsourcing.Event) error {
 	return nil
 }
 
-func (es *ESDB) Get(ctx context.Context, id string, aggregateType string, afterVersion eventsourcing.Version) (eventsourcing.EventIterator, error) {
+func (es *ESDB[T]) Get(ctx context.Context, id string, aggregateType string, afterVersion eventsourcing.Version) (eventsourcing.EventIterator[T], error) {
 	streamID := stream(aggregateType, id)
 
 	from := esdb.StreamRevision{Value: uint64(afterVersion)}
@@ -108,7 +108,7 @@ func (es *ESDB) Get(ctx context.Context, id string, aggregateType string, afterV
 	} else if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
-	return &iterator{stream: stream, serializer: es.serializer}, nil
+	return &iterator[T]{stream: stream, serializer: es.serializer}, nil
 }
 
 func stream(aggregateType, aggregateID string) string {

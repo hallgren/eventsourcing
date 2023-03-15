@@ -9,9 +9,10 @@ import (
 )
 
 func TestSuite(t *testing.T) {
-	f := func(ser eventsourcing.Serializer) (eventsourcing.EventStore, func(), error) {
-		es := memory.Create()
+	f := func(ser eventsourcing.Serializer[suite.FrequentFlierEvent]) (eventsourcing.EventStore[suite.FrequentFlierEvent], func(), error) {
+		es := memory.Create[suite.FrequentFlierEvent]()
 		return es, func() { es.Close() }, nil
 	}
-	suite.Test(t, f)
+
+	suite.Test[suite.FrequentFlierEvent](t, f)
 }

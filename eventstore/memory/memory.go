@@ -9,41 +9,41 @@ import (
 )
 
 // Memory is a handler for event streaming
-type Memory struct {
-	aggregateEvents map[string][]eventsourcing.Event // The memory structure where we store aggregate events
-	eventsInOrder   []eventsourcing.Event            // The global event order
+type Memory[T any] struct {
+	aggregateEvents map[string][]eventsourcing.Event[T] // The memory structure where we store aggregate events
+	eventsInOrder   []eventsourcing.Event[T]            // The global event order
 	lock            sync.Mutex
 }
 
-type iterator struct {
-	events   []eventsourcing.Event
+type iterator[T any] struct {
+	events   []eventsourcing.Event[T]
 	position int
 }
 
-func (i *iterator) Next() (eventsourcing.Event, error) {
+func (i *iterator[T]) Next() (eventsourcing.Event[T], error) {
 	if len(i.events) <= i.position {
-		return eventsourcing.Event{}, eventsourcing.ErrNoMoreEvents
+		return eventsourcing.Event[T]{}, eventsourcing.ErrNoMoreEvents
 	}
 	event := i.events[i.position]
 	i.position++
 	return event, nil
 }
 
-func (i *iterator) Close() {
+func (i *iterator[T]) Close() {
 	i.events = nil
 	i.position = 0
 }
 
 // Create in memory event store
-func Create() *Memory {
-	return &Memory{
-		aggregateEvents: make(map[string][]eventsourcing.Event),
-		eventsInOrder:   make([]eventsourcing.Event, 0),
+func Create[T any]() *Memory[T] {
+	return &Memory[T]{
+		aggregateEvents: make(map[string][]eventsourcing.Event[T]),
+		eventsInOrder:   make([]eventsourcing.Event[T], 0),
 	}
 }
 
 // Save an aggregate (its events)
-func (e *Memory) Save(events []eventsourcing.Event) error {
+func (e *Memory[T]) Save(events []eventsourcing.Event[T]) error {
 	// Return if there is no events to save
 	if len(events) == 0 {
 		return nil
@@ -87,8 +87,8 @@ func (e *Memory) Save(events []eventsourcing.Event) error {
 }
 
 // Get aggregate events
-func (e *Memory) Get(ctx context.Context, id string, aggregateType string, afterVersion eventsourcing.Version) (eventsourcing.EventIterator, error) {
-	var events []eventsourcing.Event
+func (e *Memory[T]) Get(ctx context.Context, id string, aggregateType string, afterVersion eventsourcing.Version) (eventsourcing.EventIterator[T], error) {
+	var events []eventsourcing.Event[T]
 	// make sure its thread safe
 	e.lock.Lock()
 	defer e.lock.Unlock()
@@ -101,12 +101,12 @@ func (e *Memory) Get(ctx context.Context, id string, aggregateType string, after
 	if len(events) == 0 {
 		return nil, eventsourcing.ErrNoEvents
 	}
-	return &iterator{events: events}, nil
+	return &iterator[T]{events: events}, nil
 }
 
 // GlobalEvents will return count events in order globally from the start posistion
-func (e *Memory) GlobalEvents(start, count uint64) ([]eventsourcing.Event, error) {
-	var events []eventsourcing.Event
+func (e *Memory[T]) GlobalEvents(start, count uint64) ([]eventsourcing.Event[T], error) {
+	var events []eventsourcing.Event[T]
 	// make sure its thread safe
 	e.lock.Lock()
 	defer e.lock.Unlock()
@@ -125,7 +125,7 @@ func (e *Memory) GlobalEvents(start, count uint64) ([]eventsourcing.Event, error
 }
 
 // Close does nothing
-func (e *Memory) Close() {}
+func (e *Memory[T]) Close() {}
 
 // aggregateKey generate a aggregate key to store events against from aggregateType and aggregateID
 func aggregateKey(aggregateType, aggregateID string) string {
