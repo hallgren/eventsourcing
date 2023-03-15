@@ -34,7 +34,7 @@ type EventSubscribers[T any] interface {
 	All(f func(e Event[T])) *subscription[T]
 	AggregateID(f func(e Event[T]), aggregates ...Aggregate[T]) *subscription[T]
 	Aggregate(f func(e Event[T]), aggregates ...Aggregate[T]) *subscription[T]
-	Event(f func(e Event[T]), events ...interface{}) *subscription[T]
+	Event(f func(e Event[T]), events ...T) *subscription[T]
 	Name(f func(e Event[T]), aggregate string, events ...string) *subscription[T]
 }
 

@@ -174,7 +174,7 @@ func (e *EventStream[T]) Aggregate(f func(e Event[T]), aggregates ...Aggregate[T
 }
 
 // Event subscribe on specific application defined events based on type referencing.
-func (e *EventStream[T]) Event(f func(e Event[T]), events ...interface{}) *subscription[T] {
+func (e *EventStream[T]) Event(f func(e Event[T]), events ...T) *subscription[T] {
 	s := subscription[T]{
 		eventF: f,
 	}
