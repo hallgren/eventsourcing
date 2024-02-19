@@ -2,90 +2,87 @@ package dynamo
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/hallgren/eventsourcing/core"
 )
 
 type DynamoEventStore struct {
-	db        *dynamodb.DynamoDB
+	db        *dynamodb.Client
 	tableName string
 }
 
-func New(sess *session.Session, tableName string) *DynamoEventStore {
+func New(cfg aws.Config, tableName string) *DynamoEventStore {
 	return &DynamoEventStore{
-		db:        dynamodb.New(sess),
+		db:        dynamodb.NewFromConfig(cfg),
 		tableName: tableName,
 	}
 }
 
 func (store *DynamoEventStore) Save(events []core.Event) error {
-	// Comprobar si hay eventos
 	if len(events) == 0 {
 		return nil
 	}
 
-	lastVersion, err := store.getLastVersion(events[0].AggregateID)
+	ctx := context.Background()
+	lastVersion, err := store.getLastVersion(ctx, events[0].AggregateID)
 	if err != nil {
-		// Manejar error al obtener la última versión
 		return err
 	}
 
-	// Comprobar si la versión del evento es la siguiente versión esperada
 	if core.Version(lastVersion)+1 != events[0].Version {
 		return core.ErrConcurrency
 	}
 
-	for i := range events {
-		// Obtener y actualizar el contador global de versión para cada evento
-		globalVersion, err := store.getAndUpdateGlobalVersion()
+	transactItems := make([]types.TransactWriteItem, len(events))
+
+	for i, event := range events {
+		globalVersion, err := store.getAndUpdateGlobalVersion(ctx)
 		if err != nil {
 			return err
 		}
 
-		// Establecer la versión global del evento
 		events[i].GlobalVersion = globalVersion
 
-		av, err := dynamodbattribute.MarshalMap(events[i])
+		av, err := attributevalue.MarshalMap(event)
 		if err != nil {
 			return err
 		}
 
-		// Preparar la expresión de condición para control de concurrencia
-		condition := "attribute_not_exists(AggregateID) OR Version = :version"
-
-		av["Version"] = &dynamodb.AttributeValue{
-			N: aws.String(fmt.Sprintf("%d", events[i].Version)),
-		}
-		av["GlobalVersion"] = &dynamodb.AttributeValue{
-			N: aws.String(fmt.Sprintf("%d", events[i].GlobalVersion)),
-		}
-
-		input := &dynamodb.PutItemInput{
-			TableName: aws.String(store.tableName),
-			Item:      av,
-			ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-				":version": {N: aws.String(fmt.Sprintf("%d", events[i].Version-1))},
+		transactItems[i] = types.TransactWriteItem{
+			Put: &types.Put{
+				TableName: aws.String(store.tableName),
+				Item:      av,
+				ExpressionAttributeValues: map[string]types.AttributeValue{
+					":version": &types.AttributeValueMemberN{
+						Value: fmt.Sprintf("%d", event.Version-1),
+					},
+				},
+				ConditionExpression: aws.String(
+					"attribute_not_exists(AggregateID) OR Version = :version",
+				),
 			},
-			ConditionExpression: aws.String(condition),
 		}
-
-		_, err = store.db.PutItem(input)
-		if err != nil {
-			switch err.(type) {
-			case *dynamodb.ConditionalCheckFailedException:
-				return core.ErrConcurrency
-			}
-
-			return err
-		}
-
 	}
+
+	_, err = store.db.TransactWriteItems(ctx, &dynamodb.TransactWriteItemsInput{
+		TransactItems: transactItems,
+	})
+
+	if err != nil {
+		var cce *types.TransactionCanceledException
+		if ok := errors.As(err, &cce); ok {
+			return core.ErrConcurrency
+		}
+		return err
+	}
+
 	return nil
 }
 
@@ -97,42 +94,38 @@ func (store *DynamoEventStore) Get(
 ) (core.Iterator, error) {
 	queryInput := &dynamodb.QueryInput{
 		TableName:              aws.String(store.tableName),
-		KeyConditionExpression: aws.String("AggregateID = :v_id AND Version > :v_version"),
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":v_id":      {S: aws.String(id)},
-			":v_version": {N: aws.String(fmt.Sprintf("%d", afterVersion))},
+		KeyConditionExpression: aws.String("AggregateID = :id AND Version > :version"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":id": &types.AttributeValueMemberS{Value: id},
+			":version": &types.AttributeValueMemberN{
+				Value: strconv.FormatInt(int64(afterVersion), 10),
+			},
 		},
 	}
 
-	result, err := store.db.QueryWithContext(ctx, queryInput)
+	result, err := store.db.Query(ctx, queryInput)
 	if err != nil {
 		return nil, err
 	}
 
 	return &iterator{
 		items:   result.Items,
-		current: -1,
+		current: -1, // Start before the first element
 	}, nil
 }
 
-func (store *DynamoEventStore) DB() *dynamodb.DynamoDB {
-	return store.db
-}
-
-func (store *DynamoEventStore) getAndUpdateGlobalVersion() (core.Version, error) {
-	// Define la clave primaria única para el ítem del contador global
-	key := map[string]*dynamodb.AttributeValue{
-		"AggregateID": {S: aws.String("GlobalVersionCounter")},
-		"Version": {
-			N: aws.String("0"),
-		}, // Valor constante para cumplir con la estructura de clave primaria
+func (store *DynamoEventStore) getAndUpdateGlobalVersion(
+	ctx context.Context,
+) (core.Version, error) {
+	key := map[string]types.AttributeValue{
+		"AggregateID": &types.AttributeValueMemberS{Value: "GlobalVersionCounter"},
+		"Version":     &types.AttributeValueMemberN{Value: "0"},
 	}
 
-	// Expresión de actualización para incrementar GlobalVersion
 	update := "SET GlobalVersion = if_not_exists(GlobalVersion, :start) + :inc"
-	exprAttrValues := map[string]*dynamodb.AttributeValue{
-		":inc":   {N: aws.String("1")}, // Incrementar en 1
-		":start": {N: aws.String("0")}, // Valor inicial si no existe
+	exprAttrValues := map[string]types.AttributeValue{
+		":inc":   &types.AttributeValueMemberN{Value: "1"},
+		":start": &types.AttributeValueMemberN{Value: "0"},
 	}
 
 	input := &dynamodb.UpdateItemInput{
@@ -140,51 +133,48 @@ func (store *DynamoEventStore) getAndUpdateGlobalVersion() (core.Version, error)
 		Key:                       key,
 		UpdateExpression:          aws.String(update),
 		ExpressionAttributeValues: exprAttrValues,
-		ReturnValues:              aws.String("UPDATED_NEW"), // Devuelve el valor actualizado
+		ReturnValues:              types.ReturnValueUpdatedNew,
 	}
 
-	result, err := store.db.UpdateItem(input)
+	result, err := store.db.UpdateItem(ctx, input)
 	if err != nil {
 		return 0, err
 	}
 
-	// Obtener la versión global actualizada del resultado
-	newVersion, err := strconv.ParseUint(*result.Attributes["GlobalVersion"].N, 10, 64)
+	newVersionStr := result.Attributes["GlobalVersion"].(*types.AttributeValueMemberN).Value
+	newVersion, err := strconv.ParseUint(newVersionStr, 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("Error al parsear GlobalVersion: %s", err)
+		return 0, fmt.Errorf("error parsing GlobalVersion: %w", err)
 	}
 
 	return core.Version(newVersion), nil
 }
 
-func (store *DynamoEventStore) getLastVersion(aggregateID string) (core.Version, error) {
-	// Definir el input para una consulta en DynamoDB
+func (store *DynamoEventStore) getLastVersion(
+	ctx context.Context,
+	aggregateID string,
+) (core.Version, error) {
 	input := &dynamodb.QueryInput{
 		TableName:              aws.String(store.tableName),
 		KeyConditionExpression: aws.String("AggregateID = :aggregateID"),
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":aggregateID": {
-				S: aws.String(aggregateID),
-			},
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":aggregateID": &types.AttributeValueMemberS{Value: aggregateID},
 		},
-		ScanIndexForward: aws.Bool(false), // Orden descendente
-		Limit:            aws.Int64(1),    // Solo necesitamos el último evento
+		ScanIndexForward: aws.Bool(false),
+		Limit:            aws.Int32(1),
 	}
 
-	// Realizar la consulta
-	result, err := store.db.Query(input)
+	result, err := store.db.Query(ctx, input)
 	if err != nil {
 		return 0, err
 	}
 
-	// Si no hay eventos, devuelve 0
 	if len(result.Items) == 0 {
 		return 0, nil
 	}
 
-	// Obtener el evento con la versión más alta
 	var event core.Event
-	err = dynamodbattribute.UnmarshalMap(result.Items[0], &event)
+	err = attributevalue.UnmarshalMap(result.Items[0], &event)
 	if err != nil {
 		return 0, err
 	}

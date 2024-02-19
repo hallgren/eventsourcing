@@ -1,12 +1,14 @@
 package dynamo_test
 
 import (
+	"context"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/hallgren/eventsourcing/core"
 	"github.com/hallgren/eventsourcing/core/testsuite"
 	"github.com/hallgren/eventsourcing/eventstore/dynamo"
@@ -14,13 +16,25 @@ import (
 
 func TestDynamoDBEventStore(t *testing.T) {
 	f := func() (core.EventStore, func(), error) {
-		// DynamoDB client configuration
-		sess, err := session.NewSession(&aws.Config{
-			Region: aws.String("us-east-1"), // Replace with your AWS region
-			// Other configurations if necessary
-			Endpoint:    aws.String("http://localhost:8000"),
-			Credentials: credentials.NewStaticCredentials("dummy", "dummy", ""),
-		})
+		// AWS SDK v2 configuration
+		cfg, err := config.LoadDefaultConfig(
+			context.TODO(),
+			config.WithRegion("us-east-1"), // Replace with your AWS region
+			// Configuration for local DynamoDB or custom endpoint
+			config.WithEndpointResolverWithOptions(
+				aws.EndpointResolverWithOptionsFunc(
+					func(service, region string, options ...interface{}) (aws.Endpoint, error) {
+						return aws.Endpoint{
+							URL:           "http://localhost:8000", // Local DynamoDB endpoint
+							SigningRegion: "us-east-1",
+						}, nil
+					},
+				),
+			),
+			config.WithCredentialsProvider(
+				credentials.NewStaticCredentialsProvider("dummy", "dummy", ""),
+			), // Static credentials
+		)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -28,50 +42,80 @@ func TestDynamoDBEventStore(t *testing.T) {
 		// Ensure you have the DynamoDB table set up properly
 		tableName := "EventStoreTable" // Replace with the name of your table
 
-		es := dynamo.New(sess, tableName)
+		es := dynamo.New(cfg, tableName)
 
-		db := es.DB()
+		db := dynamodb.NewFromConfig(cfg)
 
 		input := &dynamodb.CreateTableInput{
 			TableName: aws.String("EventStoreTable"),
-			KeySchema: []*dynamodb.KeySchemaElement{
+			KeySchema: []types.KeySchemaElement{
 				{
 					AttributeName: aws.String("AggregateID"),
-					KeyType:       aws.String("HASH"), // Partition key
+					KeyType:       types.KeyTypeHash, // Partition key
 				},
 				{
 					AttributeName: aws.String("Version"),
-					KeyType:       aws.String("RANGE"), // Sort key
+					KeyType:       types.KeyTypeRange, // Sort key
 				},
 			},
-			AttributeDefinitions: []*dynamodb.AttributeDefinition{
+			AttributeDefinitions: []types.AttributeDefinition{
 				{
 					AttributeName: aws.String("AggregateID"),
-					AttributeType: aws.String("S"), // String
+					AttributeType: types.ScalarAttributeTypeS, // String
 				},
 				{
 					AttributeName: aws.String("Version"),
-					AttributeType: aws.String("N"), // Number
+					AttributeType: types.ScalarAttributeTypeN, // Number
 				},
-				// Definition for GlobalVersionCounter if it's going to be used as a secondary index
 				{
-					AttributeName: aws.String("GlobalVersion"),
-					AttributeType: aws.String("N"), // Number
+					AttributeName: aws.String(
+						"GlobalVersion",
+					), // Ensure this is defined as a Number for the GSI
+					AttributeType: types.ScalarAttributeTypeN, // Number
 				},
-				// Add other attribute definitions here if necessary
 			},
-			ProvisionedThroughput: &dynamodb.ProvisionedThroughput{
-				ReadCapacityUnits:  aws.Int64(5), // Adjust according to your needs
+			GlobalSecondaryIndexes: []types.GlobalSecondaryIndex{
+				{
+					IndexName: aws.String("GlobalVersionIndex"), // Unique name for the GSI
+					KeySchema: []types.KeySchemaElement{
+						{
+							AttributeName: aws.String(
+								"GlobalVersion",
+							), // Partition key for the GSI, defined as a Number
+							KeyType: types.KeyTypeHash,
+						},
+						// Optional: If you need a sort key, define it here
+					},
+					Projection: &types.Projection{
+						ProjectionType: types.ProjectionTypeAll, // Adjust based on your needs (ALL, KEYS_ONLY, INCLUDE)
+					},
+					ProvisionedThroughput: &types.ProvisionedThroughput{
+						ReadCapacityUnits:  aws.Int64(1), // Adjust based on your expected workload
+						WriteCapacityUnits: aws.Int64(1),
+					},
+				},
+			},
+			ProvisionedThroughput: &types.ProvisionedThroughput{
+				ReadCapacityUnits:  aws.Int64(5), // Main table throughput settings
 				WriteCapacityUnits: aws.Int64(5),
 			},
-			// Add secondary index configurations here if necessary
 		}
 
-		db.CreateTable(input)
+		_, err = db.CreateTable(context.TODO(), input)
+		if err != nil {
+			return nil, nil, err
+		}
 
-		// Closure function is not necessary for DynamoDB in this case,
-		// but it's included to comply with the function signature.
-		closeFunc := func() {}
+		// Closure function to clean up resources, if necessary
+		closeFunc := func() {
+			_, err := db.DeleteTable(context.TODO(), &dynamodb.DeleteTableInput{
+				TableName: aws.String("EventStoreTable"), // Replace with your actual table name
+			})
+
+			if err != nil {
+				t.Fatalf("Failed to delete test table: %v", err)
+			}
+		}
 
 		return es, closeFunc, nil
 	}

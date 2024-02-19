@@ -3,3 +3,5 @@ example/example
 coverage.txt
 *.swp
 go.work
+.vscode
+eventstore/dynamo/docker/*

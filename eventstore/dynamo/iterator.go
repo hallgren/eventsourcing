@@ -1,32 +1,32 @@
 package dynamo
 
 import (
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+	"errors"
+
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/hallgren/eventsourcing/core"
 )
 
 type iterator struct {
-	items   []map[string]*dynamodb.AttributeValue
+	items   []map[string]types.AttributeValue
 	current int
 }
 
 func (it *iterator) Next() bool {
 	it.current++
-	if it.current >= len(it.items) {
-		return false
-	}
-
-	return true
+	return it.current < len(it.items)
 }
 
 func (it *iterator) Value() (core.Event, error) {
+	if it.current < 0 || it.current >= len(it.items) {
+		return core.Event{}, errors.New("iterator out of bounds")
+	}
 	var event core.Event
-	err := dynamodbattribute.UnmarshalMap(it.items[it.current], &event)
+	err := attributevalue.UnmarshalMap(it.items[it.current], &event)
 	if err != nil {
 		return core.Event{}, err
 	}
-
 	return event, nil
 }
 
