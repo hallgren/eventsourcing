@@ -3,7 +3,7 @@ package esdb
 import (
 	"strings"
 
-	"github.com/EventStore/EventStore-Client-Go/v3/esdb"
+	"github.com/EventStore/EventStore-Client-Go/v4/esdb"
 	"github.com/hallgren/eventsourcing/core"
 )
 
