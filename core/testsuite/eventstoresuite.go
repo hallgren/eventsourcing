@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"iter"
 	"math/rand"
 	"sync"
 	"testing"
@@ -121,14 +122,12 @@ func saveAndGetEvents(es core.EventStore) error {
 	if err != nil {
 		return err
 	}
-	for iterator.Next() {
-		event, err := iterator.Value()
+	for event, err := range iterator {
 		if err != nil {
 			return err
 		}
 		fetchedEvents = append(fetchedEvents, event)
 	}
-	iterator.Close()
 	if len(fetchedEvents) != len(testEvents(aggregateID)) {
 		return errors.New("wrong number of events returned")
 	}
@@ -147,14 +146,12 @@ func saveAndGetEvents(es core.EventStore) error {
 	if err != nil {
 		return err
 	}
-	for iterator.Next() {
-		event, err := iterator.Value()
+	for event, err := range iterator {
 		if err != nil {
 			break
 		}
 		fetchedEventsIncludingPartTwo = append(fetchedEventsIncludingPartTwo, event)
 	}
-	iterator.Close()
 
 	if len(fetchedEventsIncludingPartTwo) != len(append(testEvents(aggregateID), testEventsPartTwo(aggregateID)...)) {
 		return errors.New("wrong number of events returned")
@@ -191,14 +188,13 @@ func getEventsAfterVersion(es core.EventStore) error {
 		return err
 	}
 
-	for iterator.Next() {
-		event, err := iterator.Value()
+	for event, err := range iterator {
 		if err != nil {
 			break
 		}
 		fetchedEvents = append(fetchedEvents, event)
 	}
-	iterator.Close()
+
 	// Should return one less event
 	if len(fetchedEvents) != len(testEvents(aggregateID))-1 {
 		return fmt.Errorf("wrong number of events returned exp: %d, got:%d", len(fetchedEvents), len(testEvents(aggregateID))-1)
@@ -253,14 +249,13 @@ func saveAndGetEventsConcurrently(es core.EventStore) error {
 				return
 			}
 			events := make([]core.Event, 0)
-			for iterator.Next() {
-				event, err := iterator.Value()
+			for event, err := range iterator {
 				if err != nil {
 					break
 				}
 				events = append(events, event)
 			}
-			iterator.Close()
+
 			if len(events) != 6 {
 				err = fmt.Errorf("wrong number of events fetched, expecting 6 got %d", len(events))
 				return
@@ -280,10 +275,14 @@ func getErrWhenNoEvents(es core.EventStore) error {
 	if err != nil {
 		return err
 	}
-	defer iterator.Close()
-	if iterator.Next() {
+
+	next, stop := iter.Pull2(iter.Seq2[core.Event, error](iterator))
+
+	if _, _, ok := next(); ok {
 		return fmt.Errorf("expect no event when no events are saved")
 	}
+	stop()
+
 	return nil
 }
 
