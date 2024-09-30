@@ -160,14 +160,12 @@ func (er *EventRepository) GetWithContext(ctx context.Context, id string, a aggr
 	if err != nil {
 		return err
 	}
-	defer eventIterator.Close()
 
-	for eventIterator.Next() {
+	for event, err := range eventIterator {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			event, err := eventIterator.Value()
 			if err != nil {
 				return err
 			}
