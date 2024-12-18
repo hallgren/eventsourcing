@@ -171,11 +171,9 @@ func (p *Projection) RunOnce() (bool, ProjectionResult) {
 	if err != nil {
 		return false, ProjectionResult{Error: err, Name: p.Name, LastHandledEvent: lastHandledEvent}
 	}
-	defer iterator.Close()
 
-	for iterator.Next() {
+	for event, err := range iterator {
 		ran = true
-		event, err := iterator.Value()
 		if err != nil {
 			return false, ProjectionResult{Error: err, Name: p.Name, LastHandledEvent: lastHandledEvent}
 		}
