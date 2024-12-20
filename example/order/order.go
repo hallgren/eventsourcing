@@ -32,7 +32,7 @@ func (o *Order) Transition(event eventsourcing.Event) {
 		o.Outstanding = e.Total
 	case *DiscountApplied:
 		o.Outstanding -= e.Discount
-	case *Payment:
+	case *Withdrawed:
 		o.Outstanding -= e.Amount
 	case *Paid:
 		o.Status = Complete
@@ -46,7 +46,7 @@ func (o *Order) Register(r eventsourcing.RegisterFunc) {
 	r(
 		&Created{},
 		&DiscountApplied{},
-		&Payment{},
+		&Withdrawed{},
 		&Paid{},
 	)
 }
@@ -61,8 +61,8 @@ type DiscountApplied struct {
 	Discount uint
 }
 
-// Payment made on the Total amount on the Order
-type Payment struct {
+// Withdrawed an amount from the total
+type Withdrawed struct {
 	Amount uint
 }
 
@@ -98,7 +98,7 @@ func (o *Order) Pay(amount uint) error {
 		return fmt.Errorf("payment is higher than order total amount")
 	}
 
-	o.TrackChange(o, &Payment{Amount: amount})
+	o.TrackChange(o, &Withdrawed{Amount: amount})
 
 	if o.Outstanding == 0 {
 		o.TrackChange(o, &Paid{})
