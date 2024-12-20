@@ -91,6 +91,8 @@ func (o *Order) AddDiscount(amount uint) error {
 	return nil
 }
 
+// Pay creates a payment on the order. If the outstanding amount is zero the order
+// is paid.
 func (o *Order) Pay(amount uint) error {
 	if int(o.Outstanding)-int(amount) < 0 {
 		return fmt.Errorf("payment is higher than order total amount")
