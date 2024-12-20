@@ -7,7 +7,12 @@ import (
 )
 
 func TestCreateOrder(t *testing.T) {
-	o, err := order.Create(100)
+	o, err := order.Create(1000)
+	if err == nil {
+		t.Fatal("expected error due to for high amount")
+	}
+
+	o, err = order.Create(100)
 	if err != nil {
 		t.Fatal(err)
 	}
