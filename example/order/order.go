@@ -19,8 +19,8 @@ const (
 type Order struct {
 	eventsourcing.AggregateRoot
 	Status      Status
-	Total       int
-	Outstanding int
+	Total       uint
+	Outstanding uint
 }
 
 // Transition builds the aggregate state based on the events
@@ -53,17 +53,17 @@ func (o *Order) Register(r eventsourcing.RegisterFunc) {
 
 // Created when the order was created
 type Created struct {
-	Total int
+	Total uint
 }
 
 // DiscountApplied when a discount was applied
 type DiscountApplied struct {
-	Discount int
+	Discount uint
 }
 
 // Payment made on the Total amount on the Order
 type Payment struct {
-	Amount int
+	Amount uint
 }
 
 // Paid - the order is fully paid
@@ -72,9 +72,9 @@ type Paid struct{}
 // Commands
 
 // Create creates the initial order
-func Create(amount int) (*Order, error) {
-	if amount <= 0 {
-		return nil, fmt.Errorf("amount can't be zero or below")
+func Create(amount uint) (*Order, error) {
+	if amount > 500 {
+		return nil, fmt.Errorf("amount can't be higher than 500")
 	}
 
 	o := Order{}
@@ -83,7 +83,7 @@ func Create(amount int) (*Order, error) {
 }
 
 // AddDiscount adds discount to the order
-func (o *Order) AddDiscount(amount int) error {
+func (o *Order) AddDiscount(amount uint) error {
 	if o.Outstanding <= amount {
 		return fmt.Errorf("discount is larger or same as order outstanding amount")
 	}
@@ -91,8 +91,8 @@ func (o *Order) AddDiscount(amount int) error {
 	return nil
 }
 
-func (o *Order) Pay(amount int) error {
-	if o.Outstanding-amount < 0 {
+func (o *Order) Pay(amount uint) error {
+	if int(o.Outstanding)-int(amount) < 0 {
 		return fmt.Errorf("payment is higher than order total amount")
 	}
 
