@@ -42,7 +42,7 @@ func (o *Order) Transition(event eventsourcing.Event) {
 
 // Events
 
-// Regiester binds the events to eventsouring
+// Register binds the events to eventsouring
 func (o *Order) Register(r eventsourcing.RegisterFunc) {
 	r(
 		&Created{},
