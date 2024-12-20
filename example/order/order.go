@@ -20,7 +20,6 @@ type Order struct {
 	eventsourcing.AggregateRoot
 	Status      Status
 	Total       int
-	Paid        int
 	Outstanding int
 }
 
