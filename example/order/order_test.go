@@ -33,22 +33,26 @@ func TestDiscount(t *testing.T) {
 		t.Fatal(err)
 	}
 	err = o.AddDiscount(40)
+	if err == nil {
+		t.Fatal(err)
+	}
+	err = o.AddDiscount(20)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if o.Outstanding != 100-40 {
-		t.Fatalf("expected outstanding to be 60 but was %d", o.Outstanding)
-	}
-
-	// add discount above orders total amount
-	err = o.AddDiscount(80)
+	// not possible to add multiple discounts
+	err = o.AddDiscount(4)
 	if err == nil {
-		t.Fatal("expected error when adding discount above total amount")
+		t.Fatal(err)
 	}
 
-	// orders outstanding amount should not be changed
-	if o.Outstanding != 100-40 {
-		t.Fatalf("expected outstanding to be 60 but was %d", o.Outstanding)
+	if o.Outstanding == o.Total {
+		t.Fatalf("expected outstanding (%d) to be less with a discount but was same as Total (%d)", o.Outstanding, o.Total)
+	}
+
+	o.RemoveDiscount()
+	if o.Outstanding != o.Total {
+		t.Fatalf("expected order total (%d) to be same as outstandingi (%d)", o.Outstanding, o.Total)
 	}
 
 	if o.Status != order.Pending {
