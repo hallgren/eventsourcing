@@ -22,6 +22,9 @@ func TestCreateOrder(t *testing.T) {
 	if o.Total != 100 {
 		t.Fatalf("expected order total to be 100 but was %d", o.Total)
 	}
+	if o.Outstanding != 100 {
+		t.Fatalf("expected order outstanding to be 100 but was %d", o.Outstanding)
+	}
 }
 
 func TestDiscount(t *testing.T) {
@@ -51,7 +54,6 @@ func TestDiscount(t *testing.T) {
 	if o.Status != order.Pending {
 		t.Fatalf("order status should be pending but was %s", o.Status)
 	}
-
 }
 
 func TestPaid(t *testing.T) {
@@ -87,4 +89,8 @@ func TestPaid(t *testing.T) {
 		t.Fatalf("expexted status to be complete but was %s", o.Status)
 	}
 
+	err = o.Pay(10)
+	if err == nil {
+		t.Fatal("should not be able to pay on complated order")
+	}
 }
