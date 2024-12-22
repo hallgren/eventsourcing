@@ -45,10 +45,10 @@ func (o *Order) Transition(event eventsourcing.Event) {
 	case *DiscountRemoved:
 		o.Discount = 0
 		o.Outstanding = o.Total
-	case *Withdrawed:
+	case *Paid:
 		o.Outstanding -= e.Amount
 		o.Paid += e.Amount
-	case *Paid:
+	case *Completed:
 		o.Status = Complete
 	}
 }
@@ -63,8 +63,8 @@ func (o *Order) Register(r eventsourcing.RegisterFunc) {
 		&Created{},
 		&DiscountApplied{},
 		&DiscountRemoved{},
-		&Withdrawed{},
 		&Paid{},
+		&Completed{},
 	)
 }
 
@@ -82,13 +82,13 @@ type DiscountApplied struct {
 // DiscountRemoved when the discount was removed
 type DiscountRemoved struct{}
 
-// Withdrawed an amount from the total
-type Withdrawed struct {
+// Paid an amount from the total
+type Paid struct {
 	Amount uint
 }
 
-// Paid - the order is fully paid
-type Paid struct{}
+// Completed - the order is fully paid
+type Completed struct{}
 
 // Commands
 // Holds the business logic and protects the aggregate (Order) state.
@@ -124,7 +124,7 @@ func (o *Order) AddDiscount(percentage uint) error {
 		return nil
 	}
 	discountFloat := float64(percentage) / 100.0
-	newTotal := o.Total - uint(float64(o.Total)*float64(discountFloat))
+	newTotal := o.Total - uint(float64(o.Total)*discountFloat)
 	o.TrackChange(o, &DiscountApplied{Percentage: percentage, Total: newTotal})
 	return nil
 }
@@ -149,10 +149,10 @@ func (o *Order) Pay(amount uint) error {
 		return fmt.Errorf("payment is higher than order total amount")
 	}
 
-	o.TrackChange(o, &Withdrawed{Amount: amount})
+	o.TrackChange(o, &Paid{Amount: amount})
 
 	if o.Outstanding == 0 {
-		o.TrackChange(o, &Paid{})
+		o.TrackChange(o, &Completed{})
 	}
 	return nil
 }
