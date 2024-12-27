@@ -119,7 +119,7 @@ func (o *Order) AddDiscount(percentage uint) error {
 	if percentage > 25 {
 		return fmt.Errorf("discount can't be over 25 was %d", percentage)
 	}
-	// ignore if discount is zero
+	// ignore if discount percentage is zero
 	if percentage == 0 {
 		return nil
 	}
