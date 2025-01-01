@@ -136,7 +136,7 @@ func (e *EventStream) AggregateID(f func(e Event), aggregates ...aggregate) *sub
 
 	for _, a := range aggregates {
 		name := aggregateType(a)
-		root := a.Root()
+		root := a.root()
 		ref := fmt.Sprintf("%s_%s_%s", root.path(), name, root.ID())
 
 		// adds one more function to the aggregate
@@ -164,7 +164,7 @@ func (e *EventStream) Aggregate(f func(e Event), aggregates ...aggregate) *subsc
 
 	for _, a := range aggregates {
 		name := aggregateType(a)
-		root := a.Root()
+		root := a.root()
 		ref := fmt.Sprintf("%s_%s", root.path(), name)
 
 		// adds one more function to the aggregate

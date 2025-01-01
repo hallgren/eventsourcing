@@ -94,7 +94,7 @@ func (s *SnapshotRepository) getSnapshot(ctx context.Context, id string, a aggre
 	}
 
 	// set the internal aggregate properties
-	root := a.Root()
+	root := a.root()
 	root.aggregateGlobalVersion = Version(snapshot.GlobalVersion)
 	root.aggregateVersion = Version(snapshot.Version)
 	root.aggregateID = snapshot.ID
@@ -115,7 +115,7 @@ func (s *SnapshotRepository) Save(a aggregate) error {
 
 // SaveSnapshot will only store the snapshot and will return an error if there are events that are not stored
 func (s *SnapshotRepository) SaveSnapshot(a aggregate) error {
-	root := a.Root()
+	root := a.root()
 	if len(root.Events()) > 0 {
 		return ErrUnsavedEvents
 	}

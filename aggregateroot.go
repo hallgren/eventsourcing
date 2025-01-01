@@ -102,8 +102,8 @@ func (ar *AggregateRoot) ID() string {
 	return ar.aggregateID
 }
 
-// Root returns the included Aggregate Root state, and is used from the interface Aggregate.
-func (ar *AggregateRoot) Root() *AggregateRoot {
+// root returns the included Aggregate Root state, and is used from the interface Aggregate.
+func (ar *AggregateRoot) root() *AggregateRoot {
 	return ar
 }
 

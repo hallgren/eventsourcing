@@ -11,7 +11,7 @@ import (
 
 // Aggregate interface to use the aggregate root specific methods
 type aggregate interface {
-	Root() *AggregateRoot
+	root() *AggregateRoot
 	Transition(event Event)
 	Register(RegisterFunc)
 }
@@ -92,7 +92,7 @@ func (er *EventRepository) Save(a aggregate) error {
 	if !er.register.AggregateRegistered(a) {
 		return ErrAggregateNotRegistered
 	}
-	root := a.Root()
+	root := a.root()
 
 	// return as quick as possible when no events to process
 	if len(root.aggregateEvents) == 0 {
@@ -153,7 +153,7 @@ func (er *EventRepository) GetWithContext(ctx context.Context, id string, a aggr
 		return ErrAggregateNeedsToBeAPointer
 	}
 
-	root := a.Root()
+	root := a.root()
 	aggregateType := aggregateType(a)
 	// fetch events after the current version of the aggregate that could be fetched from the snapshot store
 	eventIterator, err := er.eventStore.Get(ctx, id, aggregateType, core.Version(root.aggregateVersion))
@@ -191,7 +191,7 @@ func (er *EventRepository) GetWithContext(ctx context.Context, id string, a aggr
 			root.BuildFromHistory(a, []Event{e})
 		}
 	}
-	if a.Root().Version() == 0 {
+	if a.root().Version() == 0 {
 		return ErrAggregateNotFound
 	}
 	return nil
