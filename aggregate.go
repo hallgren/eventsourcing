@@ -1,11 +1,18 @@
 package eventsourcing
 
 import (
+	"errors"
 	"reflect"
 	"time"
 
 	"github.com/hallgren/eventsourcing/core"
 )
+
+// ErrAggregateAlreadyExists returned if the aggregateID is set more than one time
+var ErrAggregateAlreadyExists = errors.New("its not possible to set ID on already existing aggregate")
+
+// ErrAggregateNeedsToBeAPointer return if aggregate is sent in as value object
+var ErrAggregateNeedsToBeAPointer = errors.New("aggregate needs to be a pointer")
 
 // Aggregate interface to use the aggregate root specific methods
 type aggregate interface {
@@ -14,16 +21,16 @@ type aggregate interface {
 	Register(RegisterFunc)
 }
 
-// TrackChange is used internally by behaviour methods to apply a state change to
+// AggregateAddEvent is used internally by behaviour methods to apply a state change to
 // the current instance and also track it in order that it can be persisted later.
-func TrackChange(a aggregate, data interface{}) {
-	TrackChangeWithMetadata(a, data, nil)
+func AggregateAddEvent(a aggregate, data interface{}) {
+	AggregateAddEventWithMetadata(a, data, nil)
 }
 
-// TrackChangeWithMetadata is used internally by behaviour methods to apply a state change to
+// AggregateAddEventWithMetadata is used internally by behaviour methods to apply a state change to
 // the current instance and also track it in order that it can be persisted later.
 // meta data is handled by this func to store none related application state
-func TrackChangeWithMetadata(a aggregate, data interface{}, metadata map[string]interface{}) {
+func AggregateAddEventWithMetadata(a aggregate, data interface{}, metadata map[string]interface{}) {
 	ar := root(a)
 	// This can be overwritten in the constructor of the aggregate
 	if ar.aggregateID == emptyAggregateID {
@@ -57,8 +64,8 @@ func buildFromHistory(a aggregate, events []Event) {
 	}
 }
 
-// SetID opens up the possibility to set manual aggregate ID from the outside
-func SetID(a aggregate, id string) error {
+// AggregateSetID opens up the possibility to set manual aggregate ID from the outside
+func AggregateSetID(a aggregate, id string) error {
 	ar := root(a)
 	if ar.aggregateID != emptyAggregateID {
 		return ErrAggregateAlreadyExists
@@ -67,29 +74,30 @@ func SetID(a aggregate, id string) error {
 	return nil
 }
 
-// ID returns the identifier of the aggregate
-func ID(a aggregate) string {
+// AggregateID returns the identifier of the aggregate
+func AggregateID(a aggregate) string {
 	return root(a).aggregateID
 }
 
+// root gets the underlaying AggregateRoot
 func root(a aggregate) *AggregateRoot {
 	return a.root()
 }
 
-// LocalVersion is the internal aggregate version
-func LocalVersion(a aggregate) Version {
+// AggregateVersion is the internal aggregate version
+func AggregateVersion(a aggregate) Version {
 	return root(a).version()
 }
 
-// GlobalVersion returns the global version based on the last stored event
-func GlobalVersion(a aggregate) Version {
+// AggregateGlobalVersion returns the global version based on the last stored event
+func AggregateGlobalVersion(a aggregate) Version {
 	ar := root(a)
 	return Version(ar.aggregateGlobalVersion)
 }
 
-// Events return the aggregate events from the aggregate
+// AggregateEvents return the aggregate events from the aggregate
 // make a copy of the slice preventing outsiders modifying events.
-func Events(a aggregate) []Event {
+func AggregateEvents(a aggregate) []Event {
 	ar := root(a)
 	e := make([]Event, len(ar.aggregateEvents))
 	// convert internal event to external event
@@ -99,8 +107,8 @@ func Events(a aggregate) []Event {
 	return e
 }
 
-// UnsavedEvents return true if there's unsaved events on the aggregate
-func UnsavedEvents(a aggregate) bool {
+// AggregateUnsavedEvents return true if there's unsaved events on the aggregate
+func AggregateUnsavedEvents(a aggregate) bool {
 	ar := root(a)
 	return len(ar.aggregateEvents) > 0
 }

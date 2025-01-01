@@ -1,7 +1,6 @@
 package eventsourcing
 
 import (
-	"errors"
 	"reflect"
 
 	"github.com/hallgren/eventsourcing/core"
@@ -18,12 +17,6 @@ type AggregateRoot struct {
 const (
 	emptyAggregateID = ""
 )
-
-// ErrAggregateAlreadyExists returned if the aggregateID is set more than one time
-var ErrAggregateAlreadyExists = errors.New("its not possible to set ID on already existing aggregate")
-
-// ErrAggregateNeedsToBeAPointer return if aggregate is sent in as value object
-var ErrAggregateNeedsToBeAPointer = errors.New("aggregate needs to be a pointer")
 
 func (ar *AggregateRoot) nextVersion() core.Version {
 	return core.Version(ar.version()) + 1

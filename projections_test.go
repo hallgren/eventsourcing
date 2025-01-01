@@ -24,7 +24,7 @@ func createPersonEvent(es *memory.Memory, name string, age int) error {
 	}
 
 	events := make([]core.Event, 0)
-	for _, e := range eventsourcing.Events(person) {
+	for _, e := range eventsourcing.AggregateEvents(person) {
 		data, err := json.Marshal(e.Data())
 		if err != nil {
 			return err

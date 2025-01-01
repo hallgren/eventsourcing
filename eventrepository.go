@@ -132,7 +132,7 @@ func (er *EventRepository) Save(a aggregate) error {
 	}
 
 	// publish the saved events to subscribers
-	er.eventStream.Publish(*root, Events(a))
+	er.eventStream.Publish(*root, AggregateEvents(a))
 
 	// update the internal aggregate state
 	root.update()

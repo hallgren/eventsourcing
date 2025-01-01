@@ -115,7 +115,7 @@ func (s *SnapshotRepository) Save(a aggregate) error {
 
 // SaveSnapshot will only store the snapshot and will return an error if there are events that are not stored
 func (s *SnapshotRepository) SaveSnapshot(a aggregate) error {
-	if len(Events(a)) > 0 {
+	if len(AggregateEvents(a)) > 0 {
 		return ErrUnsavedEvents
 	}
 
@@ -136,10 +136,10 @@ func (s *SnapshotRepository) SaveSnapshot(a aggregate) error {
 	}
 
 	snapshot := core.Snapshot{
-		ID:            ID(a),
+		ID:            AggregateID(a),
 		Type:          aggregateType(a),
-		Version:       core.Version(LocalVersion(a)),
-		GlobalVersion: core.Version(GlobalVersion(a)),
+		Version:       core.Version(AggregateVersion(a)),
+		GlobalVersion: core.Version(AggregateGlobalVersion(a)),
 		State:         state,
 	}
 

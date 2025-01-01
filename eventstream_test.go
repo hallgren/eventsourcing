@@ -27,7 +27,8 @@ type AnotherAggregate struct {
 func (a *AnotherAggregate) Transition(e eventsourcing.Event)      {}
 func (a *AnotherAggregate) Register(e eventsourcing.RegisterFunc) {}
 
-type AnotherEvent struct{}
+type AnotherEvent struct {
+}
 
 var event = eventsourcing.NewEvent(core.Event{Version: 123, AggregateType: "AnAggregate", Data: eventToByte(&AnEvent{Name: "123"})}, &AnEvent{Name: "123"}, nil)
 var otherEvent = eventsourcing.NewEvent(core.Event{Version: 456, Data: eventToByte(&AnotherEvent{}), AggregateType: "AnotherAggregate"}, &AnotherEvent{}, nil)
@@ -79,9 +80,9 @@ func TestSubAggregateID(t *testing.T) {
 	// setup aggregates with identifiers
 
 	anAggregate := AnAggregate{}
-	eventsourcing.SetID(&anAggregate, "123")
+	eventsourcing.AggregateSetID(&anAggregate, "123")
 	anOtherAggregate := AnotherAggregate{}
-	eventsourcing.SetID(&anOtherAggregate, "456")
+	eventsourcing.AggregateSetID(&anOtherAggregate, "456")
 
 	var streamEvent *eventsourcing.Event
 	e := eventsourcing.NewEventStream()
