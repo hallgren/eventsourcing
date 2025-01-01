@@ -139,7 +139,7 @@ func (er *EventRepository) Save(a aggregate) error {
 	}
 
 	// publish the saved events to subscribers
-	er.eventStream.Publish(*root, root.Events())
+	er.eventStream.Publish(*root, Events(a))
 
 	// update the internal aggregate state
 	root.update()
@@ -188,7 +188,7 @@ func (er *EventRepository) GetWithContext(ctx context.Context, id string, a aggr
 			}
 
 			e := NewEvent(event, data, metadata)
-			root.BuildFromHistory(a, []Event{e})
+			buildFromHistory(a, []Event{e})
 		}
 	}
 	if a.root().Version() == 0 {

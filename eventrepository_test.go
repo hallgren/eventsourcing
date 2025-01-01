@@ -24,12 +24,12 @@ func TestSaveAndGetAggregate(t *testing.T) {
 	}
 
 	// make sure the global version is set to 1
-	if person.GlobalVersion() != 1 {
-		t.Fatalf("global version is: %d expected: 1", person.GlobalVersion())
+	if eventsourcing.GlobalVersion(person) != 1 {
+		t.Fatalf("global version is: %d expected: 1", eventsourcing.GlobalVersion(person))
 	}
 
 	twin := Person{}
-	err = repo.Get(person.ID(), &twin)
+	err = repo.Get(eventsourcing.ID(person), &twin)
 	if err != nil {
 		t.Fatal("could not get aggregate")
 	}
@@ -58,7 +58,7 @@ func TestGetWithContext(t *testing.T) {
 	}
 
 	twin := Person{}
-	err = repo.GetWithContext(context.Background(), person.ID(), &twin)
+	err = repo.GetWithContext(context.Background(), eventsourcing.ID(person), &twin)
 	if err != nil {
 		t.Fatal("could not get aggregate")
 	}
@@ -92,7 +92,7 @@ func TestGetWithContextCancel(t *testing.T) {
 
 	// cancel the context
 	cancel()
-	err = repo.GetWithContext(ctx, person.ID(), &twin)
+	err = repo.GetWithContext(ctx, eventsourcing.ID(person), &twin)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("expected error context.Canceled but was %v", err)
 	}
@@ -359,7 +359,7 @@ func CreatePersonNoRegisteredEvents(name string) (*PersonNoRegisterEvents, error
 		return nil, errors.New("name can't be blank")
 	}
 	person := PersonNoRegisterEvents{}
-	person.TrackChange(&person, &BornNoRegisteredEvents{Name: name})
+	eventsourcing.TrackChange(&person, &BornNoRegisteredEvents{Name: name})
 	return &person, nil
 }
 
@@ -433,11 +433,11 @@ func TestConcurrentRead(t *testing.T) {
 		wg := sync.WaitGroup{}
 		wg.Add(2)
 		go func() {
-			repo.Get(person.ID(), &p1)
+			repo.Get(eventsourcing.ID(person), &p1)
 			wg.Done()
 		}()
 		go func() {
-			repo.Get(person2.ID(), &p2)
+			repo.Get(eventsourcing.ID(person2), &p2)
 			wg.Done()
 		}()
 		wg.Wait()

@@ -86,7 +86,7 @@ func (e *EventStream) aggregateTypePublisher(agg AggregateRoot, event Event) {
 // call functions that has registered for the aggregate type and ID events
 func (e *EventStream) specificAggregatesPublisher(agg AggregateRoot, event Event) {
 	// ref also include the package name ensuring that Aggregate Types can have the same name.
-	ref := fmt.Sprintf("%s_%s_%s", agg.path(), event.AggregateType(), agg.ID())
+	ref := fmt.Sprintf("%s_%s_%s", agg.path(), event.AggregateType(), agg.id())
 	if subs, ok := e.specificAggregates[ref]; ok {
 		publish(subs, event)
 	}
@@ -137,7 +137,7 @@ func (e *EventStream) AggregateID(f func(e Event), aggregates ...aggregate) *sub
 	for _, a := range aggregates {
 		name := aggregateType(a)
 		root := a.root()
-		ref := fmt.Sprintf("%s_%s_%s", root.path(), name, root.ID())
+		ref := fmt.Sprintf("%s_%s_%s", root.path(), name, root.id())
 
 		// adds one more function to the aggregate
 		e.specificAggregates[ref] = append(e.specificAggregates[ref], &s)

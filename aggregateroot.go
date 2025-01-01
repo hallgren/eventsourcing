@@ -28,14 +28,15 @@ var ErrAggregateNeedsToBeAPointer = errors.New("aggregate needs to be a pointer"
 
 // TrackChange is used internally by behaviour methods to apply a state change to
 // the current instance and also track it in order that it can be persisted later.
-func (ar *AggregateRoot) TrackChange(a aggregate, data interface{}) {
-	ar.TrackChangeWithMetadata(a, data, nil)
+func TrackChange(a aggregate, data interface{}) {
+	TrackChangeWithMetadata(a, data, nil)
 }
 
 // TrackChangeWithMetadata is used internally by behaviour methods to apply a state change to
 // the current instance and also track it in order that it can be persisted later.
 // meta data is handled by this func to store none related application state
-func (ar *AggregateRoot) TrackChangeWithMetadata(a aggregate, data interface{}, metadata map[string]interface{}) {
+func TrackChangeWithMetadata(a aggregate, data interface{}, metadata map[string]interface{}) {
+	ar := root(a)
 	// This can be overwritten in the constructor of the aggregate
 	if ar.aggregateID == emptyAggregateID {
 		ar.aggregateID = idFunc()
@@ -55,8 +56,9 @@ func (ar *AggregateRoot) TrackChangeWithMetadata(a aggregate, data interface{}, 
 	a.Transition(event)
 }
 
-// BuildFromHistory builds the aggregate state from events
-func (ar *AggregateRoot) BuildFromHistory(a aggregate, events []Event) {
+// buildFromHistory builds the aggregate state from events
+func buildFromHistory(a aggregate, events []Event) {
+	ar := root(a)
 	for _, event := range events {
 		a.Transition(event)
 		//Set the aggregate ID
@@ -89,7 +91,8 @@ func (ar *AggregateRoot) path() string {
 }
 
 // SetID opens up the possibility to set manual aggregate ID from the outside
-func (ar *AggregateRoot) SetID(id string) error {
+func SetID(a aggregate, id string) error {
+	ar := root(a)
 	if ar.aggregateID != emptyAggregateID {
 		return ErrAggregateAlreadyExists
 	}
@@ -97,14 +100,18 @@ func (ar *AggregateRoot) SetID(id string) error {
 	return nil
 }
 
+func ID(a aggregate) string {
+	return root(a).aggregateID
+}
+
 // ID returns the aggregate ID as a string
-func (ar *AggregateRoot) ID() string {
+func (ar *AggregateRoot) id() string {
 	return ar.aggregateID
 }
 
 // root returns the included Aggregate Root state, and is used from the interface Aggregate.
-func (ar *AggregateRoot) root() *AggregateRoot {
-	return ar
+func root(a aggregate) *AggregateRoot {
+	return a.root()
 }
 
 // Version return the version based on events that are not stored
@@ -115,14 +122,21 @@ func (ar *AggregateRoot) Version() Version {
 	return Version(ar.aggregateVersion)
 }
 
+func LocalVersion(a aggregate) Version {
+	ar := root(a)
+	return ar.Version()
+}
+
 // GlobalVersion returns the global version based on the last stored event
-func (ar *AggregateRoot) GlobalVersion() Version {
+func GlobalVersion(a aggregate) Version {
+	ar := root(a)
 	return Version(ar.aggregateGlobalVersion)
 }
 
 // Events return the aggregate events from the aggregate
 // make a copy of the slice preventing outsiders modifying events.
-func (ar *AggregateRoot) Events() []Event {
+func Events(a aggregate) []Event {
+	ar := root(a)
 	e := make([]Event, len(ar.aggregateEvents))
 	// convert internal event to external event
 	for i, event := range ar.aggregateEvents {
@@ -132,7 +146,8 @@ func (ar *AggregateRoot) Events() []Event {
 }
 
 // UnsavedEvents return true if there's unsaved events on the aggregate
-func (ar *AggregateRoot) UnsavedEvents() bool {
+func UnsavedEvents(a aggregate) bool {
+	ar := root(a)
 	return len(ar.aggregateEvents) > 0
 }
 
