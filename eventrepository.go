@@ -9,13 +9,6 @@ import (
 	"github.com/hallgren/eventsourcing/core"
 )
 
-// Aggregate interface to use the aggregate root specific methods
-type aggregate interface {
-	root() *AggregateRoot
-	Transition(event Event)
-	Register(RegisterFunc)
-}
-
 type EventSubscribers interface {
 	All(f func(e Event)) *subscription
 	AggregateID(f func(e Event), aggregates ...aggregate) *subscription
@@ -191,7 +184,7 @@ func (er *EventRepository) GetWithContext(ctx context.Context, id string, a aggr
 			buildFromHistory(a, []Event{e})
 		}
 	}
-	if a.root().Version() == 0 {
+	if a.root().version() == 0 {
 		return ErrAggregateNotFound
 	}
 	return nil

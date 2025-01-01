@@ -36,8 +36,8 @@ func TestSaveAndGetSnapshot(t *testing.T) {
 	}
 
 	// Check internal aggregate version
-	if person.Version() != twin.Version() {
-		t.Fatalf("Wrong version org %q copy %q", person.Version(), twin.Version())
+	if eventsourcing.LocalVersion(person) != eventsourcing.LocalVersion(&twin) {
+		t.Fatalf("Wrong version org %q copy %q", eventsourcing.LocalVersion(person), eventsourcing.LocalVersion(&twin))
 	}
 
 	if eventsourcing.ID(person) != eventsourcing.ID(&twin) {

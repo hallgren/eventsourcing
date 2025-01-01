@@ -35,8 +35,8 @@ func TestSaveAndGetAggregate(t *testing.T) {
 	}
 
 	// Check internal aggregate version
-	if person.Version() != twin.Version() {
-		t.Fatalf("Wrong version org %q copy %q", person.Version(), twin.Version())
+	if eventsourcing.LocalVersion(person) != eventsourcing.LocalVersion(&twin) {
+		t.Fatalf("Wrong version org %q copy %q", eventsourcing.LocalVersion(person), eventsourcing.LocalVersion(&twin))
 	}
 
 	// Check person Name
@@ -64,8 +64,8 @@ func TestGetWithContext(t *testing.T) {
 	}
 
 	// Check internal aggregate version
-	if person.Version() != twin.Version() {
-		t.Fatalf("Wrong version org %q copy %q", person.Version(), twin.Version())
+	if eventsourcing.LocalVersion(person) != eventsourcing.LocalVersion(&twin) {
+		t.Fatalf("Wrong version org %q copy %q", eventsourcing.LocalVersion(person), eventsourcing.LocalVersion(&twin))
 	}
 
 	// Check person Name
@@ -328,15 +328,15 @@ func TestMultipleSave(t *testing.T) {
 		t.Fatalf("could not save aggregate, err: %v", err)
 	}
 
-	version := person.Version()
+	version := eventsourcing.LocalVersion(person)
 
 	err = repo.Save(person)
 	if err != nil {
 		t.Fatalf("save should be a nop, err: %v", err)
 	}
 
-	if version != person.Version() {
-		t.Fatalf("the nop save should not change the aggregate version exp:%d, actual:%d", version, person.Version())
+	if version != eventsourcing.LocalVersion(person) {
+		t.Fatalf("the nop save should not change the aggregate version exp:%d, actual:%d", version, eventsourcing.LocalVersion(person))
 	}
 }
 

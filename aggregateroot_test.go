@@ -78,8 +78,8 @@ func (person *Person) Transition(event eventsourcing.Event) {
 
 func TestPersonWithNoEvents(t *testing.T) {
 	person := Person{}
-	if person.Version() != 0 {
-		t.Fatalf("should have version 0 had %d", person.Version())
+	if eventsourcing.LocalVersion(&person) != 0 {
+		t.Fatalf("should have version 0 had %d", eventsourcing.LocalVersion(&person))
 	}
 }
 
@@ -102,8 +102,8 @@ func TestCreateNewPerson(t *testing.T) {
 		t.Fatal("There should be one event on the person aggregateRoot")
 	}
 
-	if person.Version() != 1 {
-		t.Fatal("Wrong version on the person aggregateRoot", person.Version())
+	if eventsourcing.LocalVersion(person) != 1 {
+		t.Fatal("Wrong version on the person aggregateRoot", eventsourcing.LocalVersion(person))
 	}
 
 	if eventsourcing.Events(person)[0].Timestamp().Before(timeBefore) {
