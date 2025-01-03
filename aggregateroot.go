@@ -44,6 +44,11 @@ func (ar *AggregateRoot) id() string {
 	return ar.aggregateID
 }
 
+// root returns the included Aggregate Root state, and is used from the interface aggregate.
+func (ar *AggregateRoot) root() *AggregateRoot {
+	return ar
+}
+
 // Version return the version based on events that are not stored
 func (ar *AggregateRoot) version() Version {
 	if len(ar.aggregateEvents) > 0 {
