@@ -31,7 +31,8 @@ func CreatePerson(name string) (*Person, error) {
 		return nil, errors.New("name can't be blank")
 	}
 	person := Person{}
-	eventsourcing.AggregateAddEvent(&person, &Born{Name: name})
+	eventsourcing.Aggregate.Add(&person, &Born{Name: name})
+	//	eventsourcing.AggregateAddEvent(&person, &Born{Name: name})
 	return &person, nil
 }
 
@@ -42,13 +43,13 @@ func CreatePersonWithID(id, name string) (*Person, error) {
 	}
 
 	person := Person{}
-	err := eventsourcing.AggregateSetID(&person, id)
+	err := eventsourcing.Aggregate.SetID(&person, id)
 	if err == eventsourcing.ErrAggregateAlreadyExists {
 		return nil, err
 	} else if err != nil {
 		return nil, err
 	}
-	eventsourcing.AggregateAddEvent(&person, &Born{Name: name})
+	eventsourcing.Aggregate.Add(&person, &Born{Name: name})
 	return &person, nil
 }
 
@@ -56,7 +57,7 @@ func CreatePersonWithID(id, name string) (*Person, error) {
 func (person *Person) GrowOlder() {
 	metaData := make(map[string]interface{})
 	metaData["foo"] = "bar"
-	eventsourcing.AggregateAddEventWithMetadata(person, &AgedOneYear{}, metaData)
+	eventsourcing.Aggregate.AddMetaData(person, &AgedOneYear{}, metaData)
 }
 
 // Register bind the events to the repository when the aggregate is registered.
@@ -77,8 +78,8 @@ func (person *Person) Transition(event eventsourcing.Event) {
 
 func TestPersonWithNoEvents(t *testing.T) {
 	person := Person{}
-	if eventsourcing.AggregateVersion(&person) != 0 {
-		t.Fatalf("should have version 0 had %d", eventsourcing.AggregateVersion(&person))
+	if eventsourcing.Aggregate.Version(&person) != 0 {
+		t.Fatalf("should have version 0 had %d", eventsourcing.Aggregate.Version(&person))
 	}
 }
 
@@ -101,8 +102,8 @@ func TestCreateNewPerson(t *testing.T) {
 		t.Fatal("There should be one event on the person aggregateRoot")
 	}
 
-	if eventsourcing.AggregateVersion(person) != 1 {
-		t.Fatal("Wrong version on the person aggregateRoot", eventsourcing.AggregateVersion(person))
+	if eventsourcing.Aggregate.Version(person) != 1 {
+		t.Fatal("Wrong version on the person aggregateRoot", eventsourcing.Aggregate.Version(person))
 	}
 
 	if eventsourcing.AggregateEvents(person)[0].Timestamp().Before(timeBefore) {
@@ -129,8 +130,8 @@ func TestCreateNewPersonWithIDFromOutside(t *testing.T) {
 		t.Fatal("Error when creating person", err.Error())
 	}
 
-	if eventsourcing.AggregateID(person) != id {
-		t.Fatal("Wrong aggregate ID on the person aggregateRoot", eventsourcing.AggregateID(person))
+	if eventsourcing.Aggregate.ID(person) != id {
+		t.Fatal("Wrong aggregate ID on the person aggregateRoot", eventsourcing.Aggregate.ID(person))
 	}
 }
 
@@ -147,7 +148,7 @@ func TestSetIDOnExistingPerson(t *testing.T) {
 		t.Fatal("The constructor returned error")
 	}
 
-	err = eventsourcing.AggregateSetID(person, "new_id")
+	err = eventsourcing.Aggregate.SetID(person, "new_id")
 	if err == nil {
 		t.Fatal("Should not be possible to set ID on already existing person")
 	}
@@ -175,7 +176,7 @@ func TestPersonAgedOneYear(t *testing.T) {
 		t.Fatal("wrong meta data")
 	}
 
-	if eventsourcing.AggregateID(person) == "" {
+	if eventsourcing.Aggregate.ID(person) == "" {
 		t.Fatal("aggregate ID should not be empty")
 	}
 }
@@ -201,8 +202,8 @@ func TestSetIDFunc(t *testing.T) {
 	eventsourcing.SetIDFunc(f)
 	for i := 1; i < 10; i++ {
 		person, _ := CreatePerson("kalle")
-		if eventsourcing.AggregateID(person) != fmt.Sprint(i) {
-			t.Fatalf("id not set via the new SetIDFunc, exp: %d got: %s", i, eventsourcing.AggregateID(person))
+		if eventsourcing.Aggregate.ID(person) != fmt.Sprint(i) {
+			t.Fatalf("id not set via the new SetIDFunc, exp: %d got: %s", i, eventsourcing.Aggregate.ID(person))
 		}
 	}
 }
@@ -211,10 +212,10 @@ func TestIDFuncGeneratingRandomIDs(t *testing.T) {
 	var ids = map[string]struct{}{}
 	for i := 1; i < 100000; i++ {
 		person, _ := CreatePerson("kalle")
-		_, exists := ids[eventsourcing.AggregateID(person)]
+		_, exists := ids[eventsourcing.Aggregate.ID(person)]
 		if exists {
-			t.Fatalf("id: %s, already created", eventsourcing.AggregateID(person))
+			t.Fatalf("id: %s, already created", eventsourcing.Aggregate.ID(person))
 		}
-		ids[eventsourcing.AggregateID(person)] = struct{}{}
+		ids[eventsourcing.Aggregate.ID(person)] = struct{}{}
 	}
 }

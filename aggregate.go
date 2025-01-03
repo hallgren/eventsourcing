@@ -8,6 +8,24 @@ import (
 	"github.com/hallgren/eventsourcing/core"
 )
 
+type a struct {
+	Add           func(a aggregate, d interface{})
+	AddMetaData   func(a aggregate, data interface{}, metadata map[string]interface{})
+	SetID         func(a aggregate, id string) error
+	Version       func(a aggregate) Version
+	GlobalVersion func(a aggregate) Version
+	ID            func(a aggregate) string
+}
+
+var Aggregate = a{
+	Add:           aggregateAddEvent,
+	AddMetaData:   aggregateAddEventWithMetadata,
+	SetID:         aggregateSetID,
+	Version:       aggregateVersion,
+	GlobalVersion: aggregateGlobalVersion,
+	ID:            aggregateID,
+}
+
 // ErrAggregateAlreadyExists returned if the aggregateID is set more than one time
 var ErrAggregateAlreadyExists = errors.New("its not possible to set ID on already existing aggregate")
 
@@ -23,14 +41,14 @@ type aggregate interface {
 
 // AggregateAddEvent is used internally by behaviour methods to apply a state change to
 // the current instance and also track it in order that it can be persisted later.
-func AggregateAddEvent(a aggregate, data interface{}) {
-	AggregateAddEventWithMetadata(a, data, nil)
+func aggregateAddEvent(a aggregate, data interface{}) {
+	aggregateAddEventWithMetadata(a, data, nil)
 }
 
-// AggregateAddEventWithMetadata is used internally by behaviour methods to apply a state change to
+// aggregateAddEventWithMetadata is used internally by behaviour methods to apply a state change to
 // the current instance and also track it in order that it can be persisted later.
 // meta data is handled by this func to store none related application state
-func AggregateAddEventWithMetadata(a aggregate, data interface{}, metadata map[string]interface{}) {
+func aggregateAddEventWithMetadata(a aggregate, data interface{}, metadata map[string]interface{}) {
 	ar := root(a)
 	// This can be overwritten in the constructor of the aggregate
 	if ar.aggregateID == emptyAggregateID {
@@ -64,8 +82,8 @@ func buildFromHistory(a aggregate, events []Event) {
 	}
 }
 
-// AggregateSetID opens up the possibility to set manual aggregate ID from the outside
-func AggregateSetID(a aggregate, id string) error {
+// aggregateSetID opens up the possibility to set manual aggregate ID from the outside
+func aggregateSetID(a aggregate, id string) error {
 	ar := root(a)
 	if ar.aggregateID != emptyAggregateID {
 		return ErrAggregateAlreadyExists
@@ -74,8 +92,8 @@ func AggregateSetID(a aggregate, id string) error {
 	return nil
 }
 
-// AggregateID returns the identifier of the aggregate
-func AggregateID(a aggregate) string {
+// aggregateID returns the identifier of the aggregate
+func aggregateID(a aggregate) string {
 	return root(a).aggregateID
 }
 
@@ -84,13 +102,13 @@ func root(a aggregate) *AggregateRoot {
 	return a.root()
 }
 
-// AggregateVersion is the internal aggregate version
-func AggregateVersion(a aggregate) Version {
+// aggregateVersion is the internal aggregate version
+func aggregateVersion(a aggregate) Version {
 	return root(a).version()
 }
 
-// AggregateGlobalVersion returns the global version based on the last stored event
-func AggregateGlobalVersion(a aggregate) Version {
+// aggregateGlobalVersion returns the global version based on the last stored event
+func aggregateGlobalVersion(a aggregate) Version {
 	ar := root(a)
 	return Version(ar.aggregateGlobalVersion)
 }

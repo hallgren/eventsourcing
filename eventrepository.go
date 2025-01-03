@@ -147,9 +147,8 @@ func (er *EventRepository) GetWithContext(ctx context.Context, id string, a aggr
 	}
 
 	root := a.root()
-	aggregateType := aggregateType(a)
 	// fetch events after the current version of the aggregate that could be fetched from the snapshot store
-	eventIterator, err := er.eventStore.Get(ctx, id, aggregateType, core.Version(root.aggregateVersion))
+	eventIterator, err := er.eventStore.Get(ctx, id, aggregateType(a), core.Version(root.version()))
 	if err != nil {
 		return err
 	}

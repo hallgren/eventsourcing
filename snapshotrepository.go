@@ -136,10 +136,10 @@ func (s *SnapshotRepository) SaveSnapshot(a aggregate) error {
 	}
 
 	snapshot := core.Snapshot{
-		ID:            AggregateID(a),
+		ID:            aggregateID(a),
 		Type:          aggregateType(a),
-		Version:       core.Version(AggregateVersion(a)),
-		GlobalVersion: core.Version(AggregateGlobalVersion(a)),
+		Version:       core.Version(aggregateVersion(a)),
+		GlobalVersion: core.Version(aggregateGlobalVersion(a)),
 		State:         state,
 	}
 

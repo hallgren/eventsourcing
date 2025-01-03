@@ -80,9 +80,9 @@ func TestSubAggregateID(t *testing.T) {
 	// setup aggregates with identifiers
 
 	anAggregate := AnAggregate{}
-	eventsourcing.AggregateSetID(&anAggregate, "123")
+	eventsourcing.Aggregate.SetID(&anAggregate, "123")
 	anOtherAggregate := AnotherAggregate{}
-	eventsourcing.AggregateSetID(&anOtherAggregate, "456")
+	eventsourcing.Aggregate.SetID(&anOtherAggregate, "456")
 
 	var streamEvent *eventsourcing.Event
 	e := eventsourcing.NewEventStream()
