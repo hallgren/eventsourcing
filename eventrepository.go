@@ -9,13 +9,6 @@ import (
 	"github.com/hallgren/eventsourcing/core"
 )
 
-// Aggregate interface to use the aggregate root specific methods
-type aggregate interface {
-	root() *AggregateRoot
-	Transition(event Event)
-	Register(RegisterFunc)
-}
-
 type EventSubscribers interface {
 	All(f func(e Event)) *subscription
 	AggregateID(f func(e Event), aggregates ...aggregate) *subscription
@@ -139,7 +132,7 @@ func (er *EventRepository) Save(a aggregate) error {
 	}
 
 	// publish the saved events to subscribers
-	er.eventStream.Publish(*root, root.Events())
+	er.eventStream.Publish(*root, AggregateEvents(a))
 
 	// update the internal aggregate state
 	root.update()
@@ -154,9 +147,8 @@ func (er *EventRepository) GetWithContext(ctx context.Context, id string, a aggr
 	}
 
 	root := a.root()
-	aggregateType := aggregateType(a)
 	// fetch events after the current version of the aggregate that could be fetched from the snapshot store
-	eventIterator, err := er.eventStore.Get(ctx, id, aggregateType, core.Version(root.aggregateVersion))
+	eventIterator, err := er.eventStore.Get(ctx, id, aggregateType(a), core.Version(root.version()))
 	if err != nil {
 		return err
 	}
@@ -188,10 +180,10 @@ func (er *EventRepository) GetWithContext(ctx context.Context, id string, a aggr
 			}
 
 			e := NewEvent(event, data, metadata)
-			root.BuildFromHistory(a, []Event{e})
+			buildFromHistory(a, []Event{e})
 		}
 	}
-	if a.root().Version() == 0 {
+	if a.root().version() == 0 {
 		return ErrAggregateNotFound
 	}
 	return nil

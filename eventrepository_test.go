@@ -24,19 +24,19 @@ func TestSaveAndGetAggregate(t *testing.T) {
 	}
 
 	// make sure the global version is set to 1
-	if person.GlobalVersion() != 1 {
-		t.Fatalf("global version is: %d expected: 1", person.GlobalVersion())
+	if eventsourcing.Aggregate.GlobalVersion(person) != 1 {
+		t.Fatalf("global version is: %d expected: 1", eventsourcing.Aggregate.GlobalVersion(person))
 	}
 
 	twin := Person{}
-	err = repo.Get(person.ID(), &twin)
+	err = repo.Get(eventsourcing.Aggregate.ID(person), &twin)
 	if err != nil {
 		t.Fatal("could not get aggregate")
 	}
 
 	// Check internal aggregate version
-	if person.Version() != twin.Version() {
-		t.Fatalf("Wrong version org %q copy %q", person.Version(), twin.Version())
+	if eventsourcing.Aggregate.Version(person) != eventsourcing.Aggregate.Version(&twin) {
+		t.Fatalf("Wrong version org %q copy %q", eventsourcing.Aggregate.Version(person), eventsourcing.Aggregate.Version(&twin))
 	}
 
 	// Check person Name
@@ -58,14 +58,14 @@ func TestGetWithContext(t *testing.T) {
 	}
 
 	twin := Person{}
-	err = repo.GetWithContext(context.Background(), person.ID(), &twin)
+	err = repo.GetWithContext(context.Background(), eventsourcing.Aggregate.ID(person), &twin)
 	if err != nil {
 		t.Fatal("could not get aggregate")
 	}
 
 	// Check internal aggregate version
-	if person.Version() != twin.Version() {
-		t.Fatalf("Wrong version org %q copy %q", person.Version(), twin.Version())
+	if eventsourcing.Aggregate.Version(person) != eventsourcing.Aggregate.Version(&twin) {
+		t.Fatalf("Wrong version org %q copy %q", eventsourcing.Aggregate.Version(person), eventsourcing.Aggregate.Version(&twin))
 	}
 
 	// Check person Name
@@ -92,7 +92,7 @@ func TestGetWithContextCancel(t *testing.T) {
 
 	// cancel the context
 	cancel()
-	err = repo.GetWithContext(ctx, person.ID(), &twin)
+	err = repo.GetWithContext(ctx, eventsourcing.Aggregate.ID(person), &twin)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("expected error context.Canceled but was %v", err)
 	}
@@ -328,15 +328,15 @@ func TestMultipleSave(t *testing.T) {
 		t.Fatalf("could not save aggregate, err: %v", err)
 	}
 
-	version := person.Version()
+	version := eventsourcing.Aggregate.Version(person)
 
 	err = repo.Save(person)
 	if err != nil {
 		t.Fatalf("save should be a nop, err: %v", err)
 	}
 
-	if version != person.Version() {
-		t.Fatalf("the nop save should not change the aggregate version exp:%d, actual:%d", version, person.Version())
+	if version != eventsourcing.Aggregate.Version(person) {
+		t.Fatalf("the nop save should not change the aggregate version exp:%d, actual:%d", version, eventsourcing.Aggregate.Version(person))
 	}
 }
 
@@ -359,7 +359,7 @@ func CreatePersonNoRegisteredEvents(name string) (*PersonNoRegisterEvents, error
 		return nil, errors.New("name can't be blank")
 	}
 	person := PersonNoRegisterEvents{}
-	person.TrackChange(&person, &BornNoRegisteredEvents{Name: name})
+	eventsourcing.Aggregate.Add(&person, &BornNoRegisteredEvents{Name: name})
 	return &person, nil
 }
 
@@ -433,11 +433,11 @@ func TestConcurrentRead(t *testing.T) {
 		wg := sync.WaitGroup{}
 		wg.Add(2)
 		go func() {
-			repo.Get(person.ID(), &p1)
+			repo.Get(eventsourcing.Aggregate.ID(person), &p1)
 			wg.Done()
 		}()
 		go func() {
-			repo.Get(person2.ID(), &p2)
+			repo.Get(eventsourcing.Aggregate.ID(person2), &p2)
 			wg.Done()
 		}()
 		wg.Wait()

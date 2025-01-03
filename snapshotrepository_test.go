@@ -30,18 +30,18 @@ func TestSaveAndGetSnapshot(t *testing.T) {
 	}
 
 	twin := Person{}
-	err = snapshotrepo.GetWithContext(context.Background(), person.ID(), &twin)
+	err = snapshotrepo.GetWithContext(context.Background(), eventsourcing.Aggregate.ID(person), &twin)
 	if err != nil {
 		t.Fatal("could not get aggregate")
 	}
 
 	// Check internal aggregate version
-	if person.Version() != twin.Version() {
-		t.Fatalf("Wrong version org %q copy %q", person.Version(), twin.Version())
+	if eventsourcing.Aggregate.Version(person) != eventsourcing.Aggregate.Version(&twin) {
+		t.Fatalf("Wrong version org %q copy %q", eventsourcing.Aggregate.Version(person), eventsourcing.Aggregate.Version(&twin))
 	}
 
-	if person.ID() != twin.ID() {
-		t.Fatalf("Wrong id org %q copy %q", person.ID(), twin.ID())
+	if eventsourcing.Aggregate.ID(person) != eventsourcing.Aggregate.ID(&twin) {
+		t.Fatalf("Wrong id org %q copy %q", eventsourcing.Aggregate.ID(person), eventsourcing.Aggregate.ID(&twin))
 	}
 
 	if person.Name != twin.Name {
@@ -95,12 +95,12 @@ type Event2 struct{}
 
 func New() *snapshot {
 	s := snapshot{}
-	s.TrackChange(&s, &Event{})
+	eventsourcing.Aggregate.Add(&s, &Event{})
 	return &s
 }
 
 func (s *snapshot) Command() {
-	s.TrackChange(s, &Event2{})
+	eventsourcing.Aggregate.Add(s, &Event2{})
 }
 
 func (s *snapshot) Transition(e eventsourcing.Event) {
@@ -157,7 +157,7 @@ func TestSnapshotNoneExported(t *testing.T) {
 	snapshotrepo.Save(snap)
 
 	snap2 := snapshot{}
-	err = snapshotrepo.GetWithContext(context.Background(), snap.ID(), &snap2)
+	err = snapshotrepo.GetWithContext(context.Background(), eventsourcing.Aggregate.ID(snap), &snap2)
 	if err != nil {
 		t.Fatal(err)
 	}
