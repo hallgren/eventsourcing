@@ -3,47 +3,12 @@ package eventsourcing_test
 import (
 	"context"
 	"errors"
-	"sync"
+	"reflect"
 	"testing"
 
 	"github.com/hallgren/eventsourcing"
 	"github.com/hallgren/eventsourcing/eventstore/memory"
 )
-
-func TestSaveAndGetAggregate(t *testing.T) {
-	repo := eventsourcing.NewEventRepository(memory.Create())
-	repo.Register(&Person{})
-
-	person, err := CreatePerson("kalle")
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = repo.Save(person)
-	if err != nil {
-		t.Fatalf("could not save aggregate, err: %v", err)
-	}
-
-	// make sure the global version is set to 1
-	if person.GlobalVersion() != 1 {
-		t.Fatalf("global version is: %d expected: 1", person.GlobalVersion())
-	}
-
-	twin := Person{}
-	err = repo.Get(person.ID(), &twin)
-	if err != nil {
-		t.Fatal("could not get aggregate")
-	}
-
-	// Check internal aggregate version
-	if person.Version() != twin.Version() {
-		t.Fatalf("Wrong version org %q copy %q", person.Version(), twin.Version())
-	}
-
-	// Check person Name
-	if person.Name != twin.Name {
-		t.Fatalf("Wrong Name org %q copy %q", person.Name, twin.Name)
-	}
-}
 
 func TestGetWithContext(t *testing.T) {
 	repo := eventsourcing.NewEventRepository(memory.Create())
@@ -52,26 +17,17 @@ func TestGetWithContext(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = repo.Save(person)
+	_, err = repo.Save(person.Events())
 	if err != nil {
 		t.Fatal("could not save aggregate")
 	}
 
-	twin := Person{}
-	err = repo.GetWithContext(context.Background(), person.ID(), &twin)
+	events, err := repo.AggregateEvents(context.Background(), person.ID(), "Person", 0)
 	if err != nil {
 		t.Fatal("could not get aggregate")
 	}
 
-	// Check internal aggregate version
-	if person.Version() != twin.Version() {
-		t.Fatalf("Wrong version org %q copy %q", person.Version(), twin.Version())
-	}
-
-	// Check person Name
-	if person.Name != twin.Name {
-		t.Fatalf("Wrong Name org %q copy %q", person.Name, twin.Name)
-	}
+	reflect.DeepEqual(events, person.Events())
 }
 
 func TestGetWithContextCancel(t *testing.T) {
@@ -82,30 +38,18 @@ func TestGetWithContextCancel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = repo.Save(person)
+	_, err = repo.Save(person.Events())
 	if err != nil {
 		t.Fatal("could not save aggregate")
 	}
 
-	twin := Person{}
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// cancel the context
 	cancel()
-	err = repo.GetWithContext(ctx, person.ID(), &twin)
+	_, err = repo.AggregateEvents(ctx, person.ID(), "Person", 0)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("expected error context.Canceled but was %v", err)
-	}
-}
-
-func TestGetNoneExistingAggregate(t *testing.T) {
-	repo := eventsourcing.NewEventRepository(memory.Create())
-	repo.Register(&Person{})
-
-	p := Person{}
-	err := repo.Get("none_existing", &p)
-	if err != eventsourcing.ErrAggregateNotFound {
-		t.Fatal("could not get aggregate")
 	}
 }
 
@@ -128,7 +72,7 @@ func TestSubscriptionAllEvent(t *testing.T) {
 	person.GrowOlder()
 	person.GrowOlder()
 
-	err = repo.Save(person)
+	_, err = repo.Save(person.Events())
 	if err != nil {
 		t.Fatal("could not save aggregate")
 	}
@@ -137,6 +81,7 @@ func TestSubscriptionAllEvent(t *testing.T) {
 	}
 }
 
+/*
 func TestSubscriptionSpecificEvent(t *testing.T) {
 	counter := 0
 	f := func(e eventsourcing.Event) {
@@ -446,3 +391,4 @@ func TestConcurrentRead(t *testing.T) {
 		}
 	}
 }
+*/

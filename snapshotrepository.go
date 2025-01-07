@@ -3,6 +3,7 @@ package eventsourcing
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 
 	"github.com/hallgren/eventsourcing/core"
@@ -21,48 +22,21 @@ type SnapshotAggregate interface {
 }
 
 type SnapshotRepository struct {
-	eventRepository *EventRepository
-	snapshotStore   core.SnapshotStore
-	Encoder         encoder
+	snapshotStore core.SnapshotStore
+	Encoder       encoder
 }
 
 // NewSnapshotRepository factory function
-func NewSnapshotRepository(snapshotStore core.SnapshotStore, eventRepo *EventRepository) *SnapshotRepository {
+func NewSnapshotRepository(snapshotStore core.SnapshotStore) *SnapshotRepository {
 	return &SnapshotRepository{
-		snapshotStore:   snapshotStore,
-		eventRepository: eventRepo,
-		Encoder:         EncoderJSON{},
+		snapshotStore: snapshotStore,
+		Encoder:       EncoderJSON{},
 	}
-}
-
-// Register register the aggregate in the event repository
-func (s *SnapshotRepository) Register(a aggregate) {
-	s.eventRepository.Register(a)
-}
-
-// EventRepository returns the underlying event repository. If the user wants to operate on the event repository
-// and not use snapshot
-func (s *SnapshotRepository) EventRepository() *EventRepository {
-	return s.eventRepository
-}
-
-func (s *SnapshotRepository) GetWithContext(ctx context.Context, id string, a aggregate) error {
-	if reflect.ValueOf(a).Kind() != reflect.Ptr {
-		return ErrAggregateNeedsToBeAPointer
-	}
-
-	err := s.getSnapshot(ctx, id, a)
-	if err != nil && !errors.Is(err, core.ErrSnapshotNotFound) {
-		return err
-	}
-
-	// Append events that could have been saved after the snapshot
-	return s.eventRepository.GetWithContext(ctx, id, a)
 }
 
 // GetSnapshot returns aggregate that is based on the snapshot data
 // Beware that it could be more events that has happened after the snapshot was taken
-func (s *SnapshotRepository) GetSnapshot(ctx context.Context, id string, a aggregate) error {
+func (s *SnapshotRepository) Get(ctx context.Context, id string, a aggregate) error {
 	if reflect.ValueOf(a).Kind() != reflect.Ptr {
 		return ErrAggregateNeedsToBeAPointer
 	}
@@ -102,20 +76,10 @@ func (s *SnapshotRepository) getSnapshot(ctx context.Context, id string, a aggre
 	return nil
 }
 
-// Save will save aggregate events and snapshot
-func (s *SnapshotRepository) Save(a aggregate) error {
-	// make sure events are stored
-	err := s.eventRepository.Save(a)
-	if err != nil {
-		return err
-	}
-
-	return s.SaveSnapshot(a)
-}
-
 // SaveSnapshot will only store the snapshot and will return an error if there are events that are not stored
-func (s *SnapshotRepository) SaveSnapshot(a aggregate) error {
+func (s *SnapshotRepository) Save(a aggregate) error {
 	root := a.root()
+	fmt.Println(root)
 	if len(root.Events()) > 0 {
 		return ErrUnsavedEvents
 	}

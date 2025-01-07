@@ -1,7 +1,6 @@
 package eventsourcing
 
 import (
-	"fmt"
 	"reflect"
 	"sync"
 )
@@ -11,10 +10,6 @@ type EventStream struct {
 	// makes sure events are delivered in order and subscriptions are persistent
 	lock sync.Mutex
 
-	// holds subscribers of aggregate types events
-	aggregateTypes map[string][]*subscription
-	// holds subscribers of specific aggregates (type and identifier)
-	specificAggregates map[string][]*subscription
 	// holds subscribers of specific events
 	specificEvents map[reflect.Type][]*subscription
 	// holds subscribers of all events
@@ -39,16 +34,14 @@ func (s *subscription) Close() {
 // NewEventStream factory function
 func NewEventStream() *EventStream {
 	return &EventStream{
-		aggregateTypes:     make(map[string][]*subscription),
-		specificAggregates: make(map[string][]*subscription),
-		specificEvents:     make(map[reflect.Type][]*subscription),
-		all:                make([]*subscription, 0),
-		names:              make(map[string][]*subscription),
+		specificEvents: make(map[reflect.Type][]*subscription),
+		all:            make([]*subscription, 0),
+		names:          make(map[string][]*subscription),
 	}
 }
 
 // Publish calls the functions that are subscribing to the event stream
-func (e *EventStream) Publish(agg AggregateRoot, events []Event) {
+func (e *EventStream) Publish(events []Event) {
 	// the lock prevent other event updates get mixed with this update
 	e.lock.Lock()
 	defer e.lock.Unlock()
@@ -56,8 +49,6 @@ func (e *EventStream) Publish(agg AggregateRoot, events []Event) {
 	for _, event := range events {
 		e.allPublisher(event)
 		e.specificEventPublisher(event)
-		e.aggregateTypePublisher(agg, event)
-		e.specificAggregatesPublisher(agg, event)
 		e.namePublisher(event)
 	}
 }
@@ -71,23 +62,6 @@ func (e *EventStream) allPublisher(event Event) {
 func (e *EventStream) specificEventPublisher(event Event) {
 	ref := reflect.TypeOf(event.Data())
 	if subs, ok := e.specificEvents[ref]; ok {
-		publish(subs, event)
-	}
-}
-
-// call functions that has registered for the aggregate type events
-func (e *EventStream) aggregateTypePublisher(agg AggregateRoot, event Event) {
-	ref := fmt.Sprintf("%s_%s", agg.path(), event.AggregateType())
-	if subs, ok := e.aggregateTypes[ref]; ok {
-		publish(subs, event)
-	}
-}
-
-// call functions that has registered for the aggregate type and ID events
-func (e *EventStream) specificAggregatesPublisher(agg AggregateRoot, event Event) {
-	// ref also include the package name ensuring that Aggregate Types can have the same name.
-	ref := fmt.Sprintf("%s_%s_%s", agg.path(), event.AggregateType(), agg.ID())
-	if subs, ok := e.specificAggregates[ref]; ok {
 		publish(subs, event)
 	}
 }
@@ -114,62 +88,6 @@ func (e *EventStream) All(f func(e Event)) *subscription {
 	e.lock.Lock()
 	defer e.lock.Unlock()
 	e.all = append(e.all, &s)
-	return &s
-}
-
-// AggregateID subscribe to events that belongs to aggregate's based on its type and ID
-func (e *EventStream) AggregateID(f func(e Event), aggregates ...aggregate) *subscription {
-	s := subscription{
-		eventF: f,
-	}
-	s.close = func() {
-		e.lock.Lock()
-		defer e.lock.Unlock()
-		s.eventF = nil
-		// clean all evenF functions that are nil
-		for ref, items := range e.specificAggregates {
-			e.specificAggregates[ref] = clean(items)
-		}
-	}
-	e.lock.Lock()
-	defer e.lock.Unlock()
-
-	for _, a := range aggregates {
-		name := aggregateType(a)
-		root := a.root()
-		ref := fmt.Sprintf("%s_%s_%s", root.path(), name, root.ID())
-
-		// adds one more function to the aggregate
-		e.specificAggregates[ref] = append(e.specificAggregates[ref], &s)
-	}
-	return &s
-}
-
-// Aggregate subscribe to events based on the aggregate type
-func (e *EventStream) Aggregate(f func(e Event), aggregates ...aggregate) *subscription {
-	s := subscription{
-		eventF: f,
-	}
-	s.close = func() {
-		e.lock.Lock()
-		defer e.lock.Unlock()
-		s.eventF = nil
-		// clean all evenF functions that are nil
-		for ref, items := range e.aggregateTypes {
-			e.aggregateTypes[ref] = clean(items)
-		}
-	}
-	e.lock.Lock()
-	defer e.lock.Unlock()
-
-	for _, a := range aggregates {
-		name := aggregateType(a)
-		root := a.root()
-		ref := fmt.Sprintf("%s_%s", root.path(), name)
-
-		// adds one more function to the aggregate
-		e.aggregateTypes[ref] = append(e.aggregateTypes[ref], &s)
-	}
 	return &s
 }
 
