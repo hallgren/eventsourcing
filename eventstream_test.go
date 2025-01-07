@@ -45,7 +45,7 @@ func TestSubAll(t *testing.T) {
 	}
 	s := e.All(f)
 	defer s.Close()
-	e.Publish(AnAggregate{}.AggregateRoot, []eventsourcing.Event{event})
+	e.Publish([]eventsourcing.Event{event})
 
 	if streamEvent == nil {
 		t.Fatalf("should have received event")
@@ -64,7 +64,7 @@ func TestSubSpecificEvent(t *testing.T) {
 
 	s := e.Event(f, &AnEvent{})
 	defer s.Close()
-	e.Publish(AnAggregate{}.AggregateRoot, []eventsourcing.Event{event})
+	e.Publish([]eventsourcing.Event{event})
 
 	if streamEvent == nil {
 		t.Fatalf("should have received event")
@@ -72,62 +72,6 @@ func TestSubSpecificEvent(t *testing.T) {
 
 	if streamEvent.Version() != event.Version() {
 		t.Fatalf("wrong info in event got %q expected %q", streamEvent.Version(), event.Version())
-	}
-}
-
-func TestSubAggregateID(t *testing.T) {
-	// setup aggregates with identifiers
-
-	anAggregate := AnAggregate{}
-	anAggregate.SetID("123")
-	anOtherAggregate := AnotherAggregate{}
-	anOtherAggregate.SetID("456")
-
-	var streamEvent *eventsourcing.Event
-	e := eventsourcing.NewEventStream()
-	f := func(e eventsourcing.Event) {
-		streamEvent = &e
-	}
-	s := e.AggregateID(f, &anAggregate, &anOtherAggregate)
-	defer s.Close()
-	// update with event from the AnAggregate aggregate
-	e.Publish(anAggregate.AggregateRoot, []eventsourcing.Event{event})
-	if streamEvent == nil {
-		t.Fatalf("should have received event")
-	}
-	if streamEvent.Version() != event.Version() {
-		t.Fatalf("wrong info in event got %q expected %q", streamEvent.Version(), event.Version())
-	}
-
-	// update with event from the AnotherAggregate aggregate
-	e.Publish(anOtherAggregate.AggregateRoot, []eventsourcing.Event{otherEvent})
-	if streamEvent.Version() != otherEvent.Version() {
-		t.Fatalf("wrong info in event got %q expected %q", streamEvent.Version(), otherEvent.Version())
-	}
-}
-
-func TestSubAggregate(t *testing.T) {
-	var streamEvent *eventsourcing.Event
-	e := eventsourcing.NewEventStream()
-	f := func(e eventsourcing.Event) {
-		streamEvent = &e
-	}
-	s := e.Aggregate(f, &AnAggregate{}, &AnotherAggregate{})
-	defer s.Close()
-
-	// update with event from the AnAggregate aggregate
-	e.Publish(AnAggregate{}.AggregateRoot, []eventsourcing.Event{event})
-	if streamEvent == nil {
-		t.Fatalf("should have received event")
-	}
-	if streamEvent.Version() != event.Version() {
-		t.Fatalf("wrong info in event got %q expected %q", streamEvent.Version(), event.Version())
-	}
-
-	// update with event from the AnotherAggregate aggregate
-	e.Publish(AnotherAggregate{}.AggregateRoot, []eventsourcing.Event{otherEvent})
-	if streamEvent.Version() != otherEvent.Version() {
-		t.Fatalf("wrong info in event got %q expected %q", streamEvent.Version(), otherEvent.Version())
 	}
 }
 
@@ -140,8 +84,8 @@ func TestSubSpecificEventMultiplePublish(t *testing.T) {
 
 	s := e.Event(f, &AnEvent{}, &AnotherEvent{})
 	defer s.Close()
-	e.Publish(AnAggregate{}.AggregateRoot, []eventsourcing.Event{event})
-	e.Publish(AnotherAggregate{}.AggregateRoot, []eventsourcing.Event{otherEvent})
+	e.Publish([]eventsourcing.Event{event})
+	e.Publish([]eventsourcing.Event{otherEvent})
 
 	if streamEvents == nil {
 		t.Fatalf("should have received event")
@@ -179,7 +123,7 @@ func TestUpdateNoneSubscribedEvent(t *testing.T) {
 	}
 	s := e.Event(f, &AnotherEvent{})
 	defer s.Close()
-	e.Publish(AnAggregate{}.AggregateRoot, []eventsourcing.Event{event})
+	e.Publish([]eventsourcing.Event{event})
 
 	if streamEvent != nil {
 		t.Fatalf("should not have received event %q", streamEvent)
@@ -191,7 +135,6 @@ func TestManySubscribers(t *testing.T) {
 	streamEvent2 := make([]eventsourcing.Event, 0)
 	streamEvent3 := make([]eventsourcing.Event, 0)
 	streamEvent4 := make([]eventsourcing.Event, 0)
-	streamEvent5 := make([]eventsourcing.Event, 0)
 
 	e := eventsourcing.NewEventStream()
 	f1 := func(e eventsourcing.Event) {
@@ -206,9 +149,6 @@ func TestManySubscribers(t *testing.T) {
 	f4 := func(e eventsourcing.Event) {
 		streamEvent4 = append(streamEvent4, e)
 	}
-	f5 := func(e eventsourcing.Event) {
-		streamEvent5 = append(streamEvent5, e)
-	}
 
 	s := e.Event(f1, &AnotherEvent{})
 	defer s.Close()
@@ -218,10 +158,8 @@ func TestManySubscribers(t *testing.T) {
 	defer s.Close()
 	s = e.All(f4)
 	defer s.Close()
-	s = e.Aggregate(f5, &AnAggregate{})
-	defer s.Close()
 
-	e.Publish(AnAggregate{}.AggregateRoot, []eventsourcing.Event{event})
+	e.Publish([]eventsourcing.Event{event})
 
 	if len(streamEvent1) != 0 {
 		t.Fatalf("stream1 should not have any events")
@@ -237,10 +175,6 @@ func TestManySubscribers(t *testing.T) {
 
 	if len(streamEvent4) != 1 {
 		t.Fatalf("stream4 should have one event")
-	}
-
-	if len(streamEvent5) != 1 {
-		t.Fatalf("stream5 should have one event")
 	}
 }
 
@@ -271,11 +205,11 @@ func TestParallelPublish(t *testing.T) {
 	for i := 1; i < 1000; i++ {
 		wg.Add(2)
 		go func() {
-			e.Publish(AnotherAggregate{}.AggregateRoot, []eventsourcing.Event{otherEvent, otherEvent})
+			e.Publish([]eventsourcing.Event{otherEvent, otherEvent})
 			wg.Done()
 		}()
 		go func() {
-			e.Publish(AnAggregate{}.AggregateRoot, []eventsourcing.Event{event, event})
+			e.Publish([]eventsourcing.Event{event, event})
 			wg.Done()
 		}()
 	}
@@ -303,25 +237,21 @@ func TestClose(t *testing.T) {
 	}
 	s1 := e.All(f)
 	s2 := e.Event(f, &AnEvent{})
-	s3 := e.Aggregate(f, &AnAggregate{})
-	s4 := e.AggregateID(f, &AnAggregate{})
 	s5 := e.All(f)
 
-	// trigger all 5 subscriptions
-	e.Publish(AnAggregate{}.AggregateRoot, []eventsourcing.Event{event})
-	if count != 5 {
-		t.Fatalf("should have received 5 event")
+	// trigger all 3 subscriptions
+	e.Publish([]eventsourcing.Event{event})
+	if count != 3 {
+		t.Fatalf("should have received 3 event got %d", count)
 	}
 	// close all subscriptions
 	s1.Close()
 	s2.Close()
-	s3.Close()
-	s4.Close()
 	s5.Close()
 
 	// new event should not trigger closed subscriptions
-	e.Publish(AnAggregate{}.AggregateRoot, []eventsourcing.Event{event})
-	if count != 5 {
+	e.Publish([]eventsourcing.Event{event})
+	if count != 3 {
 		t.Fatalf("should not have received event after subscriptions are closed")
 	}
 }
@@ -343,7 +273,7 @@ func TestName(t *testing.T) {
 	// not triggered
 	s3 := e.Name(f, "AnAggregate2", "AnEvent")
 	defer s3.Close()
-	e.Publish(AnAggregate{}.AggregateRoot, []eventsourcing.Event{event})
+	e.Publish([]eventsourcing.Event{event})
 
 	if streamEvent.Version() != event.Version() {
 		t.Fatalf("wrong info in event got %q expected %q", streamEvent.Version(), event.Version())
@@ -353,7 +283,7 @@ func TestName(t *testing.T) {
 	}
 
 	streamEvent = eventsourcing.Event{}
-	e.Publish(AnotherAggregate{}.AggregateRoot, []eventsourcing.Event{otherEvent})
+	e.Publish([]eventsourcing.Event{otherEvent})
 	if streamEvent.Version() != 0 {
 		t.Fatalf("expected zero value")
 	}
