@@ -16,14 +16,14 @@ type callbackFunc func(e Event) error
 
 type ProjectionHandler struct {
 	register *Register
-	Encoder  encoder
+	Encoder  Encoder
 	count    int
 }
 
 // ErrProjectionAlreadyRunning is returned if Run is called on an already running projection
 var ErrProjectionAlreadyRunning = errors.New("projection is already running")
 
-func NewProjectionHandler(register *Register, encoder encoder) *ProjectionHandler {
+func NewProjectionHandler(register *Register, encoder Encoder) *ProjectionHandler {
 	return &ProjectionHandler{
 		register: register,
 		Encoder:  encoder,

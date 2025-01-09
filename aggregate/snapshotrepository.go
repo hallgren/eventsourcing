@@ -1,10 +1,11 @@
-package eventsourcing
+package aggregate
 
 import (
 	"context"
 	"errors"
 	"reflect"
 
+	"github.com/hallgren/eventsourcing"
 	"github.com/hallgren/eventsourcing/core"
 )
 
@@ -22,14 +23,14 @@ type SnapshotAggregate interface {
 
 type SnapshotRepository struct {
 	snapshotStore core.SnapshotStore
-	Encoder       encoder
+	Encoder       eventsourcing.Encoder
 }
 
 // NewSnapshotRepository factory function
 func NewSnapshotRepository(snapshotStore core.SnapshotStore) *SnapshotRepository {
 	return &SnapshotRepository{
 		snapshotStore: snapshotStore,
-		Encoder:       EncoderJSON{},
+		Encoder:       eventsourcing.EncoderJSON{},
 	}
 }
 
@@ -41,7 +42,7 @@ func (s *SnapshotRepository) Get(ctx context.Context, id string, a aggregate) er
 	}
 	err := s.getSnapshot(ctx, id, a)
 	if err != nil && errors.Is(err, core.ErrSnapshotNotFound) {
-		return ErrAggregateNotFound
+		return eventsourcing.ErrAggregateNotFound
 	}
 	return err
 }
@@ -68,8 +69,8 @@ func (s *SnapshotRepository) getSnapshot(ctx context.Context, id string, a aggre
 
 	// set the internal aggregate properties
 	root := a.root()
-	root.aggregateGlobalVersion = Version(snapshot.GlobalVersion)
-	root.aggregateVersion = Version(snapshot.Version)
+	root.aggregateGlobalVersion = eventsourcing.Version(snapshot.GlobalVersion)
+	root.aggregateVersion = eventsourcing.Version(snapshot.Version)
 	root.aggregateID = snapshot.ID
 
 	return nil

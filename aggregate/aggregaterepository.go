@@ -1,16 +1,25 @@
-package eventsourcing
+package aggregate
 
 import (
 	"context"
 	"reflect"
+
+	"github.com/hallgren/eventsourcing"
 )
 
+// Aggregate interface to use the aggregate root specific methods
+type aggregate interface {
+	root() *Root
+	Transition(event eventsourcing.Event)
+	Register(eventsourcing.RegisterFunc)
+}
+
 type AggregateRepository struct {
-	er *EventRepository
+	er *eventsourcing.EventRepository
 	sr *SnapshotRepository
 }
 
-func NewAggregateRepository(er *EventRepository, sr *SnapshotRepository) *AggregateRepository {
+func NewAggregateRepository(er *eventsourcing.EventRepository, sr *SnapshotRepository) *AggregateRepository {
 	return &AggregateRepository{
 		er: er,
 		sr: sr,
@@ -55,7 +64,7 @@ func (ar *AggregateRepository) Save(a aggregate) error {
 	// set internal properties and reset the events slice
 	lastEvent := root.aggregateEvents[len(root.aggregateEvents)-1]
 	root.aggregateVersion = lastEvent.Version()
-	root.aggregateEvents = []Event{}
+	root.aggregateEvents = []eventsourcing.Event{}
 
 	// if a snapshot repository is present store the aggregate
 	if ar.sr != nil {
