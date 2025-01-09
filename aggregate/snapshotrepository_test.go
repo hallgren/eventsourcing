@@ -1,4 +1,4 @@
-package eventsourcing_test
+package aggregate_test
 
 import (
 	"context"
@@ -6,17 +6,18 @@ import (
 	"testing"
 
 	"github.com/hallgren/eventsourcing"
+	"github.com/hallgren/eventsourcing/aggregate"
 	"github.com/hallgren/eventsourcing/eventstore/memory"
 	snap "github.com/hallgren/eventsourcing/snapshotstore/memory"
 )
 
-func setupSnapshotRepository() *eventsourcing.SnapshotRepository {
-	return eventsourcing.NewSnapshotRepository(snap.Create())
+func setupSnapshotRepository() *aggregate.SnapshotRepository {
+	return aggregate.NewSnapshotRepository(snap.Create())
 }
 
 func createPerson() *Person {
 	repo := eventsourcing.NewEventRepository(memory.Create())
-	aggrepo := eventsourcing.NewAggregateRepository(repo, nil)
+	aggrepo := aggregate.NewAggregateRepository(repo, nil)
 	aggrepo.Register(&Person{})
 	person, err := CreatePerson("kalle")
 	if err != nil {
@@ -90,11 +91,11 @@ func TestSaveSnapshotWithUnsavedEvents(t *testing.T) {
 
 // test custom snapshot struct to handle non-exported properties on aggregate
 type snapshot struct {
-	eventsourcing.AggregateRoot
+	aggregate.Root
 	unexported string
 	Exported   string
 	// to be able to save the snapshot after events are added to it.
-	repo *eventsourcing.AggregateRepository
+	repo *aggregate.AggregateRepository
 }
 
 type Event struct{}
@@ -102,7 +103,7 @@ type Event2 struct{}
 
 func New() *snapshot {
 	repo := eventsourcing.NewEventRepository(memory.Create())
-	aggrepo := eventsourcing.NewAggregateRepository(repo, nil)
+	aggrepo := aggregate.NewAggregateRepository(repo, nil)
 	aggrepo.Register(&snapshot{})
 	s := snapshot{}
 	s.repo = aggrepo
@@ -137,7 +138,7 @@ type snapshotInternal struct {
 	Exported   string
 }
 
-func (s *snapshot) SerializeSnapshot(m eventsourcing.SerializeFunc) ([]byte, error) {
+func (s *snapshot) SerializeSnapshot(m aggregate.SerializeFunc) ([]byte, error) {
 	snap := snapshotInternal{
 		UnExported: s.unexported,
 		Exported:   s.Exported,
@@ -145,7 +146,7 @@ func (s *snapshot) SerializeSnapshot(m eventsourcing.SerializeFunc) ([]byte, err
 	return m(snap)
 }
 
-func (s *snapshot) DeserializeSnapshot(m eventsourcing.DeserializeFunc, b []byte) error {
+func (s *snapshot) DeserializeSnapshot(m aggregate.DeserializeFunc, b []byte) error {
 	snap := snapshotInternal{}
 	err := m(b, &snap)
 	if err != nil {

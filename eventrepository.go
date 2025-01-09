@@ -8,20 +8,13 @@ import (
 	"github.com/hallgren/eventsourcing/core"
 )
 
-// Aggregate interface to use the aggregate root specific methods
-type aggregate interface {
-	root() *AggregateRoot
-	Transition(event Event)
-	Register(RegisterFunc)
-}
-
 type EventSubscribers interface {
 	All(f func(e Event)) *subscription
 	Event(f func(e Event), events ...interface{}) *subscription
 	Name(f func(e Event), aggregate string, events ...string) *subscription
 }
 
-type encoder interface {
+type Encoder interface {
 	Serialize(v interface{}) ([]byte, error)
 	Deserialize(data []byte, v interface{}) error
 }
@@ -47,7 +40,7 @@ type EventRepository struct {
 	// register that convert the Data []byte to correct type
 	register *Register
 	// encoder to serialize / deserialize events
-	encoder     encoder
+	encoder     Encoder
 	Projections *ProjectionHandler
 }
 
@@ -66,7 +59,7 @@ func NewEventRepository(eventStore core.EventStore) *EventRepository {
 }
 
 // Encoder change the default JSON encoder that serializer/deserializer events
-func (er *EventRepository) Encoder(e encoder) {
+func (er *EventRepository) Encoder(e Encoder) {
 	// set encoder on event repository
 	er.encoder = e
 	// set encoder in projection handler

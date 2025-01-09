@@ -1,16 +1,17 @@
-package eventsourcing_test
+package aggregate_test
 
 import (
 	"context"
 	"testing"
 
 	"github.com/hallgren/eventsourcing"
+	"github.com/hallgren/eventsourcing/aggregate"
 	"github.com/hallgren/eventsourcing/eventstore/memory"
 )
 
 func TestSaveAndGet(t *testing.T) {
 	repo := eventsourcing.NewEventRepository(memory.Create())
-	aggrepo := eventsourcing.NewAggregateRepository(repo, nil)
+	aggrepo := aggregate.NewAggregateRepository(repo, nil)
 	aggrepo.Register(&Person{})
 
 	person, err := CreatePerson("kalle")
@@ -46,7 +47,7 @@ func TestSaveAndGet(t *testing.T) {
 
 func TestGetNoneExistingAggregate(t *testing.T) {
 	repo := eventsourcing.NewEventRepository(memory.Create())
-	aggrepo := eventsourcing.NewAggregateRepository(repo, nil)
+	aggrepo := aggregate.NewAggregateRepository(repo, nil)
 	aggrepo.Register(&Person{})
 
 	p := Person{}
