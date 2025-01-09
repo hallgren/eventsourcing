@@ -73,10 +73,6 @@ func (er *EventRepository) Encoder(e encoder) {
 	er.Projections.Encoder = e
 }
 
-func (er *EventRepository) Register(a aggregate) {
-	er.register.Register(a)
-}
-
 // Subscribers returns an interface with all event subscribers
 func (er *EventRepository) Subscribers() EventSubscribers {
 	return er.eventStream
@@ -166,4 +162,8 @@ func (er *EventRepository) Save(events []Event) (Version, error) {
 	er.eventStream.Publish(events)
 
 	return Version(esEvents[len(esEvents)-1].GlobalVersion), nil
+}
+
+func (er *EventRepository) Register(a agg) {
+	er.register.Register(a)
 }

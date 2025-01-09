@@ -10,8 +10,8 @@ import (
 
 func TestSaveAndGet(t *testing.T) {
 	repo := eventsourcing.NewEventRepository(memory.Create())
-	repo.Register(&Person{})
 	aggrepo := eventsourcing.NewAggregateRepository(repo, nil)
+	aggrepo.Register(&Person{})
 
 	person, err := CreatePerson("kalle")
 	if err != nil {
@@ -46,8 +46,8 @@ func TestSaveAndGet(t *testing.T) {
 
 func TestGetNoneExistingAggregate(t *testing.T) {
 	repo := eventsourcing.NewEventRepository(memory.Create())
-	repo.Register(&Person{})
 	aggrepo := eventsourcing.NewAggregateRepository(repo, nil)
+	aggrepo.Register(&Person{})
 
 	p := Person{}
 	err := aggrepo.Get(context.Background(), "none_existing", &p)

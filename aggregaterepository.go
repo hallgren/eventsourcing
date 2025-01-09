@@ -63,3 +63,8 @@ func (ar *AggregateRepository) Save(a aggregate) error {
 	}
 	return nil
 }
+
+// Register registers the aggregate and its events
+func (ar *AggregateRepository) Register(a aggregate) {
+	ar.er.Register(a)
+}
