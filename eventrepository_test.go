@@ -5,29 +5,45 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/hallgren/eventsourcing"
+	"github.com/hallgren/eventsourcing/core"
 	"github.com/hallgren/eventsourcing/eventstore/memory"
 )
+
+func events() []eventsourcing.Event {
+	events := make([]eventsourcing.Event, 0)
+	events = append(events, eventsourcing.NewEvent(core.Event{
+		AggregateID:   "123",
+		Version:       1,
+		GlobalVersion: 0,
+		AggregateType: "Person",
+		Timestamp:     time.Now().UTC(),
+		Reason:        "Born",
+		Data:          []byte{},
+		Metadata:      []byte{},
+	}, &Born{
+		Name: "Kalle",
+	}, nil))
+	return events
+}
 
 func TestGetWithContext(t *testing.T) {
 	repo := eventsourcing.NewEventRepository(memory.Create())
 	repo.Register(&Person{})
-	person, err := CreatePerson("kalle")
+	e := events()
+	_, err := repo.Save(events())
 	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = repo.Save(person.Events())
-	if err != nil {
-		t.Fatal("could not save aggregate")
+		t.Fatalf("could not save aggregate, err: %v", err)
 	}
 
-	events, err := repo.AggregateEvents(context.Background(), person.ID(), "Person", 0)
+	events, err := repo.AggregateEvents(context.Background(), "123", "Person", 0)
 	if err != nil {
 		t.Fatal("could not get aggregate")
 	}
 
-	reflect.DeepEqual(events, person.Events())
+	reflect.DeepEqual(events, e)
 }
 
 func TestGetWithContextCancel(t *testing.T) {

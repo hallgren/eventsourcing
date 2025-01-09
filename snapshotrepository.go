@@ -3,7 +3,6 @@ package eventsourcing
 import (
 	"context"
 	"errors"
-	"fmt"
 	"reflect"
 
 	"github.com/hallgren/eventsourcing/core"
@@ -79,7 +78,6 @@ func (s *SnapshotRepository) getSnapshot(ctx context.Context, id string, a aggre
 // SaveSnapshot will only store the snapshot and will return an error if there are events that are not stored
 func (s *SnapshotRepository) Save(a aggregate) error {
 	root := a.root()
-	fmt.Println(root)
 	if len(root.Events()) > 0 {
 		return ErrUnsavedEvents
 	}

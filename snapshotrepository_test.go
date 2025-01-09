@@ -16,8 +16,8 @@ func setupSnapshotRepository() *eventsourcing.SnapshotRepository {
 
 func createPerson() *Person {
 	repo := eventsourcing.NewEventRepository(memory.Create())
-	repo.Register(&Person{})
 	aggrepo := eventsourcing.NewAggregateRepository(repo, nil)
+	aggrepo.Register(&Person{})
 	person, err := CreatePerson("kalle")
 	if err != nil {
 		panic(err)
@@ -102,8 +102,8 @@ type Event2 struct{}
 
 func New() *snapshot {
 	repo := eventsourcing.NewEventRepository(memory.Create())
-	repo.Register(&snapshot{})
 	aggrepo := eventsourcing.NewAggregateRepository(repo, nil)
+	aggrepo.Register(&snapshot{})
 	s := snapshot{}
 	s.repo = aggrepo
 	s.TrackChange(&s, &Event{})
