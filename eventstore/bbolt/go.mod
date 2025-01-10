@@ -7,6 +7,6 @@ require (
 	go.etcd.io/bbolt v1.3.11
 )
 
-require golang.org/x/sys v0.26.0 // indirect
+require golang.org/x/sys v0.29.0 // indirect
 
 // replace github.com/hallgren/eventsourcing/core => ../../core
