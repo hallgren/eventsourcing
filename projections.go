@@ -14,19 +14,18 @@ import (
 type fetchFunc func() (core.Iterator, error)
 type callbackFunc func(e Event) error
 
-type ProjectionHandler struct {
-	register *Register
-	Encoder  Encoder
-	count    int
+type ProjectionRepository struct {
+	er    *EventRepository
+	count int
 }
 
 // ErrProjectionAlreadyRunning is returned if Run is called on an already running projection
 var ErrProjectionAlreadyRunning = errors.New("projection is already running")
 
-func NewProjectionHandler(register *Register, encoder Encoder) *ProjectionHandler {
-	return &ProjectionHandler{
-		register: register,
-		Encoder:  encoder,
+// NewProjectionRepository returns a ProjectionHandler
+func NewProjectionRepository(er *EventRepository) *ProjectionRepository {
+	return &ProjectionRepository{
+		er: er,
 	}
 }
 
@@ -34,7 +33,7 @@ type Projection struct {
 	running   atomic.Bool
 	fetchF    fetchFunc
 	callbackF callbackFunc
-	handler   *ProjectionHandler
+	handler   *ProjectionRepository
 	trigger   chan func()
 	Strict    bool // Strict indicate if the projection should return error if the event it fetches is not found in the register
 	Name      string
@@ -43,7 +42,7 @@ type Projection struct {
 // Group runs projections concurrently
 type Group struct {
 	Pace        time.Duration // Pace is used when a projection is running and it reaches the end of the event stream
-	handler     *ProjectionHandler
+	handler     *ProjectionRepository
 	projections []*Projection
 	cancelF     context.CancelFunc
 	wg          sync.WaitGroup
@@ -58,16 +57,16 @@ type ProjectionResult struct {
 }
 
 // Projection creates a projection that will run down an event stream
-func (ph *ProjectionHandler) Projection(fetchF fetchFunc, callbackF callbackFunc) *Projection {
+func (pr *ProjectionRepository) Projection(fetchF fetchFunc, callbackF callbackFunc) *Projection {
 	projection := Projection{
 		fetchF:    fetchF,
 		callbackF: callbackF,
-		handler:   ph,
+		handler:   pr,
 		trigger:   make(chan func()),
 		Strict:    true,                        // Default strict is active
-		Name:      fmt.Sprintf("%d", ph.count), // Default the name to it's creation index
+		Name:      fmt.Sprintf("%d", pr.count), // Default the name to it's creation index
 	}
-	ph.count++
+	pr.count++
 	return &projection
 }
 
@@ -167,9 +166,13 @@ func (p *Projection) RunOnce() (bool, ProjectionResult) {
 	var ran bool
 	var lastHandledEvent Event
 
-	iterator, err := p.fetchF()
+	coreIterator, err := p.fetchF()
 	if err != nil {
 		return false, ProjectionResult{Error: err, Name: p.Name, LastHandledEvent: lastHandledEvent}
+	}
+	iterator := &Iterator{
+		iterator: coreIterator,
+		er:       p.handler.er,
 	}
 	defer iterator.Close()
 
@@ -177,46 +180,28 @@ func (p *Projection) RunOnce() (bool, ProjectionResult) {
 		ran = true
 		event, err := iterator.Value()
 		if err != nil {
+			if errors.Is(err, ErrEventNotRegistered) {
+				if p.Strict {
+					err = fmt.Errorf("event not registered aggregate type: %s, reason: %s, global version: %d, %w", event.AggregateType(), event.Reason(), event.GlobalVersion(), ErrEventNotRegistered)
+					return false, ProjectionResult{Error: err, Name: p.Name, LastHandledEvent: lastHandledEvent}
+				}
+				continue
+			}
 			return false, ProjectionResult{Error: err, Name: p.Name, LastHandledEvent: lastHandledEvent}
 		}
 
-		// TODO: is only registered events of interest?
-		f, found := p.handler.register.EventRegistered(event)
-		if !found {
-			if p.Strict {
-				err = fmt.Errorf("event not registered aggregate type: %s, reason: %s, global version: %d, %w", event.AggregateType, event.Reason, event.GlobalVersion, ErrEventNotRegistered)
-				return false, ProjectionResult{Error: err, Name: p.Name, LastHandledEvent: lastHandledEvent}
-			}
-			continue
-		}
-
-		data := f()
-		err = p.handler.Encoder.Deserialize(event.Data, &data)
-		if err != nil {
-			return false, ProjectionResult{Error: err, Name: p.Name, LastHandledEvent: lastHandledEvent}
-		}
-
-		metadata := make(map[string]interface{})
-		if event.Metadata != nil {
-			err = p.handler.Encoder.Deserialize(event.Metadata, &metadata)
-			if err != nil {
-				return false, ProjectionResult{Error: err, Name: p.Name, LastHandledEvent: lastHandledEvent}
-			}
-		}
-		e := NewEvent(event, data, metadata)
-
-		err = p.callbackF(e)
+		err = p.callbackF(event)
 		if err != nil {
 			return false, ProjectionResult{Error: err, Name: p.Name, LastHandledEvent: lastHandledEvent}
 		}
 		// keep a reference to the last successfully handled event
-		lastHandledEvent = e
+		lastHandledEvent = event
 	}
 	return ran, ProjectionResult{Error: nil, Name: p.Name, LastHandledEvent: lastHandledEvent}
 }
 
 // Group runs a group of projections concurrently
-func (ph *ProjectionHandler) Group(projections ...*Projection) *Group {
+func (ph *ProjectionRepository) Group(projections ...*Projection) *Group {
 	return &Group{
 		handler:     ph,
 		projections: projections,
@@ -282,7 +267,7 @@ func (g *Group) Stop() {
 
 // Race runs the projections to the end of the events streams.
 // Can be used on a stale event stream with no more events coming in or when you want to know when all projections are done.
-func (p *ProjectionHandler) Race(cancelOnError bool, projections ...*Projection) ([]ProjectionResult, error) {
+func (p *ProjectionRepository) Race(cancelOnError bool, projections ...*Projection) ([]ProjectionResult, error) {
 	var lock sync.Mutex
 	var causingErr error
 

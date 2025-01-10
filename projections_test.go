@@ -46,8 +46,8 @@ func createPersonEvent(es *memory.Memory, name string, age int) error {
 func TestRunOnce(t *testing.T) {
 	// setup
 	es := memory.Create()
-	register := eventsourcing.NewRegister()
-	register.Register(&Person{})
+	er := eventsourcing.NewEventRepository(es)
+	er.Register(&Person{})
 
 	projectedName := ""
 
@@ -62,7 +62,7 @@ func TestRunOnce(t *testing.T) {
 	}
 
 	// run projection one event at each run
-	p := eventsourcing.NewProjectionHandler(register, eventsourcing.EncoderJSON{})
+	p := eventsourcing.NewProjectionRepository(er)
 	proj := p.Projection(es.All(0, 1), func(event eventsourcing.Event) error {
 		switch e := event.Data().(type) {
 		case *Born:
@@ -74,7 +74,7 @@ func TestRunOnce(t *testing.T) {
 	// should set projectedName to kalle
 	work, result := proj.RunOnce()
 	if result.Error != nil {
-		t.Fatal(err)
+		t.Fatal(result)
 	}
 
 	if !work {
@@ -87,7 +87,7 @@ func TestRunOnce(t *testing.T) {
 	// should set the projected name to anka
 	work, result = proj.RunOnce()
 	if result.Error != nil {
-		t.Fatal(err)
+		t.Fatal(result.Error)
 	}
 
 	if !work {
@@ -99,10 +99,9 @@ func TestRunOnce(t *testing.T) {
 }
 
 func TestRun(t *testing.T) {
-	// setup
 	es := memory.Create()
-	register := eventsourcing.NewRegister()
-	register.Register(&Person{})
+	er := eventsourcing.NewEventRepository(es)
+	er.Register(&Person{})
 
 	projectedName := ""
 	sourceName := "kalle"
@@ -113,7 +112,7 @@ func TestRun(t *testing.T) {
 	}
 
 	// run projection
-	p := eventsourcing.NewProjectionHandler(register, eventsourcing.EncoderJSON{})
+	p := eventsourcing.NewProjectionRepository(er)
 	proj := p.Projection(es.All(0, 1), func(event eventsourcing.Event) error {
 		switch e := event.Data().(type) {
 		case *Born:
@@ -139,8 +138,8 @@ func TestRun(t *testing.T) {
 func TestRunSameProjectionConcurrently(t *testing.T) {
 	// setup
 	es := memory.Create()
-	register := eventsourcing.NewRegister()
-	register.Register(&Person{})
+	er := eventsourcing.NewEventRepository(es)
+	er.Register(&Person{})
 
 	sourceName := "kalle"
 
@@ -152,7 +151,7 @@ func TestRunSameProjectionConcurrently(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	// run projection
-	p := eventsourcing.NewProjectionHandler(register, eventsourcing.EncoderJSON{})
+	p := eventsourcing.NewProjectionRepository(er)
 	proj := p.Projection(es.All(0, 1), func(event eventsourcing.Event) error {
 		wg.Done()
 		return nil
@@ -178,14 +177,14 @@ func TestRunSameProjectionConcurrently(t *testing.T) {
 func TestTriggerSync(t *testing.T) {
 	// setup
 	es := memory.Create()
-	register := eventsourcing.NewRegister()
-	register.Register(&Person{})
+	er := eventsourcing.NewEventRepository(es)
+	er.Register(&Person{})
 
 	projectedName := ""
 	sourceName := "kalle"
 
 	// run projection
-	p := eventsourcing.NewProjectionHandler(register, eventsourcing.EncoderJSON{})
+	p := eventsourcing.NewProjectionRepository(er)
 	proj := p.Projection(es.All(0, 1), func(event eventsourcing.Event) error {
 		switch e := event.Data().(type) {
 		case *Born:
@@ -224,8 +223,8 @@ func TestTriggerSync(t *testing.T) {
 func TestTriggerAsync(t *testing.T) {
 	// setup
 	es := memory.Create()
-	register := eventsourcing.NewRegister()
-	register.Register(&Person{})
+	er := eventsourcing.NewEventRepository(es)
+	er.Register(&Person{})
 
 	projectedName := ""
 	sourceName := "kalle"
@@ -234,7 +233,7 @@ func TestTriggerAsync(t *testing.T) {
 	wg.Add(1)
 
 	// run projection
-	p := eventsourcing.NewProjectionHandler(register, eventsourcing.EncoderJSON{})
+	p := eventsourcing.NewProjectionRepository(er)
 	proj := p.Projection(es.All(0, 1), func(event eventsourcing.Event) error {
 		switch e := event.Data().(type) {
 		case *Born:
@@ -277,7 +276,7 @@ func TestTriggerAsync(t *testing.T) {
 }
 
 func TestCloseEmptyGroup(t *testing.T) {
-	p := eventsourcing.NewProjectionHandler(eventsourcing.NewRegister(), eventsourcing.EncoderJSON{})
+	p := eventsourcing.NewProjectionRepository(eventsourcing.NewEventRepository(memory.Create()))
 	g := p.Group()
 	g.Stop()
 	g.Start()
@@ -288,14 +287,15 @@ func TestCloseEmptyGroup(t *testing.T) {
 func TestStartMultipleProjections(t *testing.T) {
 	// setup
 	es := memory.Create()
-	register := eventsourcing.NewRegister()
+	er := eventsourcing.NewEventRepository(es)
+	er.Register(&Person{})
 
 	// callback that handles the events
 	callbackF := func(event eventsourcing.Event) error {
 		return nil
 	}
 
-	p := eventsourcing.NewProjectionHandler(register, eventsourcing.EncoderJSON{})
+	p := eventsourcing.NewProjectionRepository(er)
 	r1 := p.Projection(es.All(0, 1), callbackF)
 	r2 := p.Projection(es.All(0, 1), callbackF)
 	r3 := p.Projection(es.All(0, 1), callbackF)
@@ -308,8 +308,8 @@ func TestStartMultipleProjections(t *testing.T) {
 func TestErrorFromCallback(t *testing.T) {
 	// setup
 	es := memory.Create()
-	register := eventsourcing.NewRegister()
-	register.Register(&Person{})
+	er := eventsourcing.NewEventRepository(es)
+	er.Register(&Person{})
 
 	err := createPersonEvent(es, "kalle", 1)
 	if err != nil {
@@ -324,7 +324,7 @@ func TestErrorFromCallback(t *testing.T) {
 		return ErrApplication
 	}
 
-	p := eventsourcing.NewProjectionHandler(register, eventsourcing.EncoderJSON{})
+	p := eventsourcing.NewProjectionRepository(er)
 	r := p.Projection(es.All(0, 1), callbackF)
 
 	g := p.Group(r)
@@ -349,7 +349,7 @@ func TestErrorFromCallback(t *testing.T) {
 func TestStrict(t *testing.T) {
 	// setup
 	es := memory.Create()
-	register := eventsourcing.NewRegister()
+	er := eventsourcing.NewEventRepository(es)
 
 	// We do not register the Person aggregate with the Born event attached
 	err := createPersonEvent(es, "kalle", 1)
@@ -357,7 +357,7 @@ func TestStrict(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	p := eventsourcing.NewProjectionHandler(register, eventsourcing.EncoderJSON{})
+	p := eventsourcing.NewProjectionRepository(er)
 	proj := p.Projection(es.All(0, 1), func(event eventsourcing.Event) error {
 		return nil
 	})
@@ -371,8 +371,8 @@ func TestStrict(t *testing.T) {
 func TestRace(t *testing.T) {
 	// setup
 	es := memory.Create()
-	register := eventsourcing.NewRegister()
-	register.Register(&Person{})
+	er := eventsourcing.NewEventRepository(es)
+	er.Register(&Person{})
 
 	err := createPersonEvent(es, "kalle", 50)
 	if err != nil {
@@ -387,7 +387,7 @@ func TestRace(t *testing.T) {
 
 	applicationErr := errors.New("an error")
 
-	p := eventsourcing.NewProjectionHandler(register, eventsourcing.EncoderJSON{})
+	p := eventsourcing.NewProjectionRepository(er)
 	r1 := p.Projection(es.All(0, 1), callbackF)
 	r2 := p.Projection(es.All(0, 1), func(e eventsourcing.Event) error {
 		time.Sleep(time.Millisecond)
@@ -423,8 +423,8 @@ func TestRace(t *testing.T) {
 func TestKeepStartPosition(t *testing.T) {
 	// setup
 	es := memory.Create()
-	register := eventsourcing.NewRegister()
-	register.Register(&Person{})
+	er := eventsourcing.NewEventRepository(es)
+	er.Register(&Person{})
 
 	err := createPersonEvent(es, "kalle", 5)
 	if err != nil {
@@ -444,7 +444,7 @@ func TestKeepStartPosition(t *testing.T) {
 		return nil
 	}
 
-	p := eventsourcing.NewProjectionHandler(register, eventsourcing.EncoderJSON{})
+	p := eventsourcing.NewProjectionRepository(er)
 	r := p.Projection(es.All(0, 1), callbackF)
 
 	_, err = p.Race(true, r)

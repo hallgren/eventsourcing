@@ -40,8 +40,7 @@ type EventRepository struct {
 	// register that convert the Data []byte to correct type
 	register *Register
 	// encoder to serialize / deserialize events
-	encoder     Encoder
-	Projections *ProjectionHandler
+	encoder Encoder
 }
 
 // NewRepository factory function
@@ -54,7 +53,6 @@ func NewEventRepository(eventStore core.EventStore) *EventRepository {
 		eventStream: NewEventStream(),
 		register:    register,
 		encoder:     encoder, // Default to JSON encoder
-		Projections: NewProjectionHandler(register, encoder),
 	}
 }
 
@@ -62,8 +60,6 @@ func NewEventRepository(eventStore core.EventStore) *EventRepository {
 func (er *EventRepository) Encoder(e Encoder) {
 	// set encoder on event repository
 	er.encoder = e
-	// set encoder in projection handler
-	er.Projections.Encoder = e
 }
 
 // Subscribers returns an interface with all event subscribers
@@ -125,6 +121,7 @@ func (er *EventRepository) Save(events []Event) (Version, error) {
 	return Version(esEvents[len(esEvents)-1].GlobalVersion), nil
 }
 
+// Regsiter registers the aggregate in the register
 func (er *EventRepository) Register(a agg) {
 	er.register.Register(a)
 }
