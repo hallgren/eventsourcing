@@ -77,7 +77,7 @@ func (e *Memory) Get(ctx context.Context, id string, aggregateType string, after
 			events = append(events, e)
 		}
 	}
-	return &iterator{events: events}, nil
+	return &iterator{events: events}, ctx.Err()
 }
 
 // Close does nothing
