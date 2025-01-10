@@ -80,11 +80,15 @@ func (ar *AggregateRepository) Save(a aggregate) error {
 	root.aggregateVersion = lastEvent.Version()
 	root.aggregateEvents = []eventsourcing.Event{}
 
-	// if a snapshot repository is present store the aggregate
-	if ar.sr != nil {
-		ar.sr.Save(a)
-	}
 	return nil
+}
+
+// SaveSnapshot calls the underlaying snapshot repository if present
+func (ar *AggregateRepository) SaveSnapshot(a aggregate) error {
+	if ar.sr != nil {
+		return nil
+	}
+	return ar.sr.Save(a)
 }
 
 // Register registers the aggregate and its events
