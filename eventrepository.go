@@ -71,48 +71,16 @@ func (er *EventRepository) Subscribers() EventSubscribers {
 	return er.eventStream
 }
 
-func (er *EventRepository) AggregateEvents(ctx context.Context, id, aggregateType string, fromVersion Version) ([]Event, error) {
-	var events = make([]Event, 0)
+func (er *EventRepository) AggregateEvents(ctx context.Context, id, aggregateType string, fromVersion Version) (*Iterator, error) {
 	// fetch events after the current version of the aggregate that could be fetched from the snapshot store
 	eventIterator, err := er.eventStore.Get(ctx, id, aggregateType, core.Version(fromVersion))
 	if err != nil {
 		return nil, err
 	}
-	defer eventIterator.Close()
-
-	for eventIterator.Next() {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		default:
-			event, err := eventIterator.Value()
-			if err != nil {
-				return nil, err
-			}
-			// apply the event to the aggregate
-			f, found := er.register.EventRegistered(event)
-			if !found {
-				continue
-			}
-			data := f()
-			err = er.encoder.Deserialize(event.Data, &data)
-			if err != nil {
-				return nil, err
-			}
-			metadata := make(map[string]interface{})
-			err = er.encoder.Deserialize(event.Metadata, &metadata)
-			if err != nil {
-				return nil, err
-			}
-
-			events = append(events, NewEvent(event, data, metadata))
-		}
-	}
-
-	if len(events) == 0 {
-		return nil, ErrAggregateNotFound
-	}
-	return events, nil
+	return &Iterator{
+		iterator: eventIterator,
+		er:       er,
+	}, nil
 }
 
 func (er *EventRepository) Save(events []Event) (Version, error) {

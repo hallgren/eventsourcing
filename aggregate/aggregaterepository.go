@@ -37,11 +37,25 @@ func (ar *AggregateRepository) Get(ctx context.Context, id string, a aggregate) 
 	}
 	root := a.root()
 
-	events, err := ar.er.AggregateEvents(ctx, id, aggregateType(a), root.Version())
+	iterator, err := ar.er.AggregateEvents(ctx, id, aggregateType(a), root.Version())
 	if err != nil {
 		return err
 	}
-	root.BuildFromHistory(a, events)
+	for iterator.Next() {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			event, err := iterator.Value()
+			if err != nil {
+				return err
+			}
+			root.BuildFromHistory(a, []eventsourcing.Event{event})
+		}
+	}
+	if root.Version() == 0 {
+		return eventsourcing.ErrAggregateNotFound
+	}
 	return nil
 }
 
