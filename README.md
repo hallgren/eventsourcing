@@ -18,23 +18,23 @@ It's structured in two main parts:
 
 [Event Sourcing](https://martinfowler.com/eaaDev/EventSourcing.html) is a technique to make it possible to capture all changes to an application state as a sequence of events.
 
-### Aggregate Root
+### Aggregate
 
-The *aggregate root* is the central point where events are bound. The aggregate struct needs to embed `eventsourcing.AggreateRoot` to get the aggregate behaviors.
+The *aggregate* is the central point where events are bound. The aggregate struct needs to embed `aggregate.Root` to get the aggregate behaviors.
 
-Below, a *Person* aggregate where the Aggregate Root is embedded next to the `Name` and `Age` properties.
+*Person* aggregate where the Aggregate Root is embedded next to the `Name` and `Age` properties.
 
 ```go
 type Person struct {
-	eventsourcing.AggregateRoot
+	aggregate.Root
 	Name string
 	Age  int
 }
 ```
 
-The aggregate needs to implement the `Transition(event eventsourcing.Event)` and `Register(r eventsourcing.RegisterFunc)` methods to fulfill the aggregate interface. This methods define how events are transformed to build the aggregate state and which events to register into the repository. 
+The aggregate needs to implement the `Transition(event eventsourcing.Event)` and `Register(r eventsourcing.RegisterFunc)` methods to fulfill the aggregate interface. This methods define how events are transformed to build the aggregate state and which events to register into the repository.
 
-Example of the Transition method from the `Person` aggregate.
+Example of the Transition method on the `Person` aggregate.
 
 ```go
 // Transition the person state dependent on the events
@@ -62,7 +62,7 @@ func (person *Person) Register(r eventsourcing.RegisterFunc) {
 
 The `Born` and `AgedOneYear` events are now registered to the repository when the aggregate is registered.
 
-### Aggregate Event
+### Event
 
 An event is a clean struct with exported properties that contains the state of the event.
 
@@ -78,7 +78,9 @@ type Born struct {
 type AgedOneYear struct {}
 ```
 
-When an aggregate is first created, an event is needed to initialize the state of the aggregate. No event, no aggregate. Below is an example of a constructor that returns the `Person` aggregate and inside it binds an event via the `TrackChange` function. It's possible to define rules that the aggregate must uphold before an event is created, in this case the person's name must not be blank.
+When an aggregate is first created, an event is needed to initialize the state of the aggregate. No event, no aggregate.
+Example of a constructor that returns the `Person` aggregate and inside it binds an event via the `TrackChange` function.
+It's possible to define rules that the aggregate must uphold before an event is created, in this case the person's name must not be blank.
 
 ```go
 // CreatePerson constructor for Person
@@ -92,7 +94,7 @@ func CreatePerson(name string) (*Person, error) {
 }
 ```
 
-When a person is created, more events could be created via methods on the `Person` aggregate. Below is the `GrowOlder` method which in turn triggers the event `AgedOneYear`. This event is tracked on the person aggregate.
+When a person is created, more events could be created via methods on the `Person` aggregate. Below is the `GrowOlder` method which in turn triggers the event `AgedOneYear`.
 
 ```go
 // GrowOlder command
@@ -105,28 +107,26 @@ Internally the `TrackChange` methods calls the `Transition` method on the aggreg
 
 To bind metadata to events use the `TrackChangeWithMetadata` method.
   
-The internal `Event` looks like this.
+The `Event` has the following behaviours..
 
 ```go
 type Event struct {
     // aggregate identifier 
-    aggregateID string
+    AggregateID() string
     // the aggregate version when this event was created
-    version         Version
+    Version() Version
     // the global version is based on all events (this value is only set after the event is saved to the event store) 
-    globalVersion   Version
+    GlobalVersion() Version
     // aggregate type (Person in the example above)
-    aggregateType   string
+    AggregateType() string
     // UTC time when the event was created  
-    timestamp       time.Time
+    Timestamp() time.Time
     // the specific event data specified in the application (Born{}, AgedOneYear{})
-    data            interface{}
+    Data() interface{}
     // data that don´t belongs to the application state (could be correlation id or other request references)
-    metadata        map[string]interface{}
+    Metadata() map[string]interface{}
 }
 ```
-
-To access properties on the event you can use the corresponding methods exposing them, e.g `AggregateID()`. This prevent external parties to modify the event from the outside.
 
 ### Aggregate ID
 
@@ -140,7 +140,7 @@ person := Person{}
 err := person.SetID(id)
 ```
 
-* Change the id generator via the global eventsourcing.SetIDFunc function.
+* Change the id generator via the global aggregate.SetIDFunc function.
 
 ```go
 var counter = 0
@@ -149,7 +149,50 @@ f := func() string {
 	return fmt.Sprint(counter)
 }
 
-eventsourcing.SetIDFunc(f)
+aggregate.SetIDFunc(f)
+```
+## Aggregate Repository
+
+The aggregate repository save and get aggregates. It uses the event repository to fetch the events and the optional snapshot repository to
+fetch the initial aggregate state (this should only be used to speed up fetching aggregates with large amount of events)
+
+```go
+aggregateRepo := aggregate.NewAggregateRepository(er *eventsourcing.EventRepository, sr *SnapshotRepository) *AggregateRepository
+```
+
+The exposed methods are
+
+```go
+// fetches the aggregate based on its identifier
+Get(ctx context.Context, id string, a aggregate) error
+
+// saves the events that are tracked on the aggregate
+Save(a aggregate) error
+
+// register the aggregate and event types
+Register(a aggregate)
+
+// if a snapshot repository is in use the snapshot is saved via a separate method
+SaveSnapshot(a aggregate) error
+```
+
+The reason for storing events and snapshots in separate methods is that a problem in storing a snapshot should not return an error as the events was successfully stored.
+
+An example of a person being saved and fetched from the aggegate repository. The aggregate repository uses the event reposistory to 
+fetched the events for the aggregate.
+
+```go
+eventRepo := NewRepository(eventStore EventStore) *Repository
+aggregateRepo := aggregate.NewAggregateRepository(eventRepo, nil)
+
+// the person aggregate has to be registered in the repository
+aggregateRepo.Register(&Person{})
+
+person := person.CreatePerson("Alice")
+person.GrowOlder()
+aggregateRepo.Save(person)
+twin := Person{}
+aggregateRepo.Get(person.Id, &twin)
 ```
 
 ## Event Repository
@@ -157,35 +200,16 @@ eventsourcing.SetIDFunc(f)
 The event repository is used to save and retrieve aggregate events. The main functions are:
 
 ```go
-// saves the events on the aggregate
-Save(a aggregate) error
+// saves the events in underlaying event store
+Save(events []Event) error
 
-// retrieves and build an aggregate from events based on its identifier
-// possible to cancel from the outside
-GetWithContext(ctx context.Context, id string, a aggregate) error
-
-// retrieves and build an aggregate from events based on its identifier
-Get(id string, a aggregate) error
+// retrieves events based on the aggreagte id and type. If the aggregate is based on snapshot the `fromVersion`
+// is larger than 0.
+// Returned is a event iterator that is passed to the aggregate repository that builds the aggregate state from the events.
+AggregateEvents(ctx context.Context, id, aggregateType string, fromVersion Version) (*Iterator, error)
 ```
 
-The event repository constructor input values is an event store, this handles the reading and writing of events and builds the aggregate based on the events.
-
-```go
-repo := NewRepository(eventStore EventStore) *Repository
-```
-
-Here is an example of a person being saved and fetched from the repository.
-
-```go
-// the person aggregate has to be registered in the repository
-repo.Register(&Person{})
-
-person := person.CreatePerson("Alice")
-person.GrowOlder()
-repo.Save(person)
-twin := Person{}
-repo.Get(person.Id, &twin)
-```
+The event repository is in turn using an event store where the events are stored.
 
 ### Event Store
 
@@ -206,13 +230,14 @@ Currently, there are four internal implementations.
 * Event Store DB - `go get github.com/hallgren/eventsourcing/eventstore/esdb`
 * RAM Memory - part of the main module
 
-And one external.
+External event stores:
 
 * [DynamoDB](https://github.com/fd1az/dynamo-es) by [fd1az](https://github.com/fd1az)
 
 ### Custom event store
 
-If you want to store events in a database beside the already implemented event stores (`sql`, `bbolt`, `esdb` and `memory`) you can implement, or provide, another event store. It has to implement the `EventStore`  interface to support the eventsourcing.Repository.
+If you want to store events in a database beside the already implemented event stores you can implement, or provide, another event store. It has to implement the `core.EventStore` 
+interface to support the eventsourcing.EventRepository.
 
 ```go
 type EventStore interface {
@@ -225,7 +250,8 @@ The event store needs to import the `github.com/hallgren/eventsourcing/core` mod
 
 ### Encoder
 
-Before an `eventsourcing.Event` is stored into a event store it has to be tranformed into an `core.Event`. This is done with an encoder that serializes the data properties `Data` and `Metadata` into `[]byte`. When a event is fetched the encoder deserialises the `Data` and `Metadata` `[]byte` back into there actual types.
+Before an `eventsourcing.Event` is stored into a event store it has to be tranformed into an `core.Event`. This is done with an encoder that serializes the data properties `Data` and `Metadata` into `[]byte`.
+When a event is fetched the encoder deserialises the `Data` and `Metadata` `[]byte` back into there actual types.
 
 The event repository has a default encoder that uses the `encoding/json` package for serialization/deserialization. It can be replaced by using the `Encoder(e encoder)` method on the event repository and has to follow this interface:
 
@@ -281,36 +307,25 @@ s.Close()
 
 ## Snapshot
 
-If an aggregate has a lot of events it can take some time fetching it's event and building the aggregate. This can be optimized with the help of a snapshot. The snapshot is the state of the aggregate on a specific version. Instead of iterating all aggregate events, only the events after the version is iterated and used to build the aggregate. The use of snapshots is optional and is exposed via the snapshot repository.
+If an aggregate has a lot of events it can take some time fetching it's event and building the aggregate. This can be optimized with the help of a snapshot.
+The snapshot is the state of the aggregate on a specific version. Instead of iterating all aggregate events, only the events after the version is iterated and
+used to build the aggregate. The use of snapshots is optional and is exposed via the snapshot repository.
 
 ### Snapshot Repository
 
-The snapshot repository is used to fetch and save aggregate-based snapshots and events (if there are events after the snapshot version). 
-
-The snapshot repository is a layer on top of the event repository.
+The snapshot repository is used to save and get snapshots. It's only possible to save a snapshot if it has no pending events, meaning that its saved to the aggregate
+repository before saved to the snapshot repository.
 
 ```go
-NewSnapshotRepository(snapshotStore core.SnapshotStore, eventRepo *EventRepository) *SnapshotRepository
+NewSnapshotRepository(snapshotStore core.SnapshotStore) *SnapshotRepository
 ```
 
 ```go
-// fetch the aggregate based on its snapshot and the events after the version of the snapshot
-GetWithContext(ctx context.Context, id string, a aggregate) error
+// gets the aggregate snapshot based on its identifier
+Get(ctx context.Context, id string, a aggregate) error
 
-// only fetch the aggregate snapshot and not any events
-GetSnapshot(ctx context.Context, id string, a aggregate) error
-
-// store the aggregate events and after the snapshot
+// store the aggregate snapshot
 Save(a aggregate) error
-
-// Store only the aggregate snapshot. Will return an error if there are events that are not stored on the aggregate
-SaveSnapshot(a aggregate) error
-
-// expose the underlying event repository.
-EventRepository() *EventRepository
-
-// register the aggregate in the underlying event repository
-Register(a aggregate)
 ```
 
 ### Snapshot Store
@@ -330,7 +345,7 @@ As unexported properties on a struct is not possible to serialize there is the s
 To fix this there are optional callback methods that can be added to the aggregate struct.
 
 ```go
-type SnapshotAggregate interface {
+type snapshot interface {
 	SerializeSnapshot(SerializeFunc) ([]byte, error)
 	DeserializeSnapshot(DeserializeFunc, []byte) error
 }
@@ -341,7 +356,7 @@ Example:
 ```go
 // aggregate
 type Person struct {
-	eventsourcing.AggregateRoot
+	aggregate.Root
 	unexported string
 }
 
@@ -351,16 +366,16 @@ type PersonSnapshot struct {
 }
 
 // callback that maps the aggregate to the snapshot struct with the exported property
-func (s *snapshot) SerializeSnapshot(m eventsourcing.SerializeFunc) ([]byte, error) {
-	snap := snapshotInternal{
+func (s *Person) SerializeSnapshot(m aggregate.SerializeFunc) ([]byte, error) {
+	snap := PersonSnapshot{
 		Unexported: s.unexported,
 	}
 	return m(snap)
 }
 
 // callback to map the snapshot back to the aggregate
-func (s *snapshot) DeserializeSnapshot(m eventsourcing.DeserializeFunc, b []byte) error {
-	snap := snapshotInternal{}
+func (s *Person) DeserializeSnapshot(m aggregate.DeserializeFunc, b []byte) error {
+	snap := PersonSnapshot{}
 	err := m(b, &snap)
 	if err != nil {
 		return err
@@ -376,27 +391,21 @@ Projections is a way to build read-models based on events. A read-model is way t
 
 If you want more background on projections check out Derek Comartin projections article [Projections in Event Sourcing: Build ANY model you want!](https://codeopinion.com/projections-in-event-sourcing-build-any-model-you-want/) or Martin Fowler's [CQRS](https://martinfowler.com/bliki/CQRS.html).
 
-### Projection Handler
+### Projection Repository
 
-The Projection handler is the central part where projections are created. It's available from the event repository by the `eventrepo.Projections` property but can also be created standalone.
+The Projection repository is the central part where projections are created.
 
 ```go
 // access via the event repository
 eventRepo := eventsourcing.NewEventRepository(eventstore)
-ph := eventRepo.Projections
-
-// standalone without the event repository
-ph := eventsourcing.NewProjectionHandler(register, encoder)
+pr := eventsourcing.NewProjectionsRepository(eventRepo)
 ```
-
-The projection handler include the event register and a encoder to deserialize events from an event store to application event.
-
 ### Projection
 
-A _projection_ is created from the projection handler via the `Projection()` method. The method takes a `fetchFunc` and a `callbackFunc` and returns a pointer to the projection.
+A _projection_ is created from the projection repository via the `Projection()` method. The method takes a `fetchFunc` and a `callbackFunc` and returns a pointer to the projection.
 
 ```go
-p := ph.Projection(f fetchFunc, c callbackFunc)
+p := pr.Projection(f fetchFunc, c callbackFunc)
 ```
 
 The fetchFunc must return `(core.Iterator, error)`, i.e the same signature that event stores return when they return events.
@@ -414,7 +423,7 @@ type callbackFunc func(e eventsourcing.Event) error
 Example: Creates a projection that fetch all events from an event store and handle them in the callbackF.
 
 ```go
-p := eventRepo.Projections.Projection(es.All(0, 1), func(event eventsourcing.Event) error {
+p := pr.Projection(es.All(0, 1), func(event eventsourcing.Event) error {
 	switch e := event.Data().(type) {
 	case *Born:
 		// handle the event
@@ -481,7 +490,7 @@ A projection have a set of properties that can affect it's behaivior.
 A set of projections can run concurrently in a group.
 
 ```go
-g := ph.Group(p1, p2, p3)
+g := pr.Group(p1, p2, p3)
 ```
 
 A group is started with `g.Start()` where each projection will run in a separate go routine. Errors from a projection can be retrieved from a error channel `g.ErrChan`.
@@ -490,12 +499,12 @@ The `g.Stop()` method is used to halt all projections in the group and it return
 
 ```go
 // create three projections
-p1 := ph.Projection(es.All(0, 1), callbackF)
-p2 := ph.Projection(es.All(0, 1), callbackF)
-p3 := ph.Projection(es.All(0, 1), callbackF)
+p1 := pr.Projection(es.All(0, 1), callbackF)
+p2 := pr.Projection(es.All(0, 1), callbackF)
+p3 := pr.Projection(es.All(0, 1), callbackF)
 
 // create a group containing the projections
-g := ph.Group(p1, p2, p3)
+g := pr.Group(p1, p2, p3)
 
 // Start runs all projections concurrently
 g.Start()
@@ -539,9 +548,8 @@ Race example:
 
 ```go
 // create two projections
-ph := eventsourcing.NewProjectionHandler(register, eventsourcing.EncoderJSON{})
-p1 := ph.Projection(es.All(0, 1), callbackF)
-p2 := ph.Projection(es.All(0, 1), callbackF)
+p1 := pr.Projection(es.All(0, 1), callbackF)
+p2 := pr.Projection(es.All(0, 1), callbackF)
 
 // true make the race return on error in any projection
 result, err := p.Race(true, r1, r2)
