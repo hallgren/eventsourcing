@@ -15,8 +15,8 @@ var ErrUnsavedEvents = errors.New("aggregate holds unsaved events")
 type SerializeFunc func(v interface{}) ([]byte, error)
 type DeserializeFunc func(data []byte, v interface{}) error
 
-// SnapshotAggregate interface is used to serialize an aggregate that has no exported properties
-type SnapshotAggregate interface {
+// snapshot interface is used to serialize an aggregate that has properties that are not exported
+type snapshot interface {
 	SerializeSnapshot(SerializeFunc) ([]byte, error)
 	DeserializeSnapshot(DeserializeFunc, []byte) error
 }
@@ -36,32 +36,32 @@ func NewSnapshotRepository(snapshotStore core.SnapshotStore) *SnapshotRepository
 
 // GetSnapshot returns aggregate that is based on the snapshot data
 // Beware that it could be more events that has happened after the snapshot was taken
-func (s *SnapshotRepository) Get(ctx context.Context, id string, a aggregate) error {
+func (sr *SnapshotRepository) Get(ctx context.Context, id string, a aggregate) error {
 	if reflect.ValueOf(a).Kind() != reflect.Ptr {
 		return ErrAggregateNeedsToBeAPointer
 	}
-	err := s.getSnapshot(ctx, id, a)
+	err := sr.getSnapshot(ctx, id, a)
 	if err != nil && errors.Is(err, core.ErrSnapshotNotFound) {
 		return eventsourcing.ErrAggregateNotFound
 	}
 	return err
 }
 
-func (s *SnapshotRepository) getSnapshot(ctx context.Context, id string, a aggregate) error {
-	snapshot, err := s.snapshotStore.Get(ctx, id, aggregateType(a))
+func (sr *SnapshotRepository) getSnapshot(ctx context.Context, id string, a aggregate) error {
+	s, err := sr.snapshotStore.Get(ctx, id, aggregateType(a))
 	if err != nil {
 		return err
 	}
 
 	// Does the aggregate have specific snapshot handling
-	sa, ok := a.(SnapshotAggregate)
+	sa, ok := a.(snapshot)
 	if ok {
-		err = sa.DeserializeSnapshot(s.Encoder.Deserialize, snapshot.State)
+		err = sa.DeserializeSnapshot(sr.Encoder.Deserialize, s.State)
 		if err != nil {
 			return err
 		}
 	} else {
-		err = s.Encoder.Deserialize(snapshot.State, a)
+		err = sr.Encoder.Deserialize(s.State, a)
 		if err != nil {
 			return err
 		}
@@ -69,15 +69,15 @@ func (s *SnapshotRepository) getSnapshot(ctx context.Context, id string, a aggre
 
 	// set the internal aggregate properties
 	root := a.root()
-	root.aggregateGlobalVersion = eventsourcing.Version(snapshot.GlobalVersion)
-	root.aggregateVersion = eventsourcing.Version(snapshot.Version)
-	root.aggregateID = snapshot.ID
+	root.aggregateGlobalVersion = eventsourcing.Version(s.GlobalVersion)
+	root.aggregateVersion = eventsourcing.Version(s.Version)
+	root.aggregateID = s.ID
 
 	return nil
 }
 
 // SaveSnapshot will only store the snapshot and will return an error if there are events that are not stored
-func (s *SnapshotRepository) Save(a aggregate) error {
+func (sr *SnapshotRepository) Save(a aggregate) error {
 	root := a.root()
 	if len(root.Events()) > 0 {
 		return ErrUnsavedEvents
@@ -86,14 +86,14 @@ func (s *SnapshotRepository) Save(a aggregate) error {
 	state := []byte{}
 	var err error
 	// Does the aggregate have specific snapshot handling
-	sa, ok := a.(SnapshotAggregate)
+	sa, ok := a.(snapshot)
 	if ok {
-		state, err = sa.SerializeSnapshot(s.Encoder.Serialize)
+		state, err = sa.SerializeSnapshot(sr.Encoder.Serialize)
 		if err != nil {
 			return err
 		}
 	} else {
-		state, err = s.Encoder.Serialize(a)
+		state, err = sr.Encoder.Serialize(a)
 		if err != nil {
 			return err
 		}
@@ -107,6 +107,6 @@ func (s *SnapshotRepository) Save(a aggregate) error {
 		State:         state,
 	}
 
-	err = s.snapshotStore.Save(snapshot)
+	err = sr.snapshotStore.Save(snapshot)
 	return err
 }
