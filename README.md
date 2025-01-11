@@ -223,7 +223,7 @@ Save(events []core.Event) error
 Get(id string, aggregateType string, afterVersion core.Version) (core.Iterator, error)
 ```
 
-Currently, there are four internal implementations.
+There are four implementations in this repository.
 
 * SQL - `go get github.com/hallgren/eventsourcing/eventstore/sql`
 * Bolt - `go get github.com/hallgren/eventsourcing/eventstore/bbolt`
@@ -233,6 +233,7 @@ Currently, there are four internal implementations.
 External event stores:
 
 * [DynamoDB](https://github.com/fd1az/dynamo-es) by [fd1az](https://github.com/fd1az)
+* [SQL pgx driver](https://github.com/CentralConcept/go-eventsourcing-pgx/tree/main/eventstore/pgx)
 
 ### Custom event store
 
@@ -338,6 +339,15 @@ type SnapshotStore interface {
 	Get(ctx context.Context, id, aggregateType string) (Snapshot, error)
 }
 ```
+
+There are two implementations in this repository.
+
+* SQL - `go get github.com/hallgren/eventsourcing/snapshotstore/sql`
+* RAM Memory - part of the main module
+
+External event stores:
+
+* [SQL pgx driver](https://github.com/CentralConcept/go-eventsourcing-pgx/tree/main/snapshotstore/pgx)
 
 ### Unexported aggregate properties
 
