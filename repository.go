@@ -45,14 +45,11 @@ type EventRepository struct {
 
 // NewRepository factory function
 func NewEventRepository(eventStore core.EventStore) *EventRepository {
-	register := NewRegister()
-	encoder := EncoderJSON{}
-
 	return &EventRepository{
 		eventStore:  eventStore,
 		eventStream: NewEventStream(),
-		register:    register,
-		encoder:     encoder, // Default to JSON encoder
+		register:    NewRegister(),
+		encoder:     EncoderJSON{}, // Default to JSON encoder
 	}
 }
 
