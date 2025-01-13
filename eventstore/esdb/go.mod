@@ -5,7 +5,7 @@ go 1.22
 require (
 	github.com/EventStore/EventStore-Client-Go/v4 v4.2.0
 	github.com/hallgren/eventsourcing/core v0.4.0
-	github.com/testcontainers/testcontainers-go v0.34.0
+	github.com/testcontainers/testcontainers-go v0.35.0
 )
 
 require (
