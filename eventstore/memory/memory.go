@@ -67,17 +67,18 @@ func (e *Memory) Save(events []core.Event) error {
 
 // Get aggregate events
 func (e *Memory) Get(ctx context.Context, id string, aggregateType string, afterVersion core.Version) (core.Iterator, error) {
-	var events []core.Event
-	// make sure its thread safe
-	e.lock.Lock()
-	defer e.lock.Unlock()
+	return func(yield func(core.Event, error) bool) {
+		e.lock.Lock()
+		defer e.lock.Unlock()
 
-	for _, e := range e.aggregateEvents[aggregateKey(aggregateType, id)] {
-		if e.Version > afterVersion {
-			events = append(events, e)
+		for _, e := range e.aggregateEvents[aggregateKey(aggregateType, id)] {
+			if e.Version > afterVersion {
+				if !yield(e, nil) {
+					return
+				}
+			}
 		}
-	}
-	return &iterator{events: events}, nil
+	}, nil
 }
 
 // Close does nothing
@@ -118,11 +119,16 @@ func (m *Memory) All(start core.Version, count uint64) func() (core.Iterator, er
 
 		// no events to fetch
 		if len(events) == 0 {
-			return core.ZeroIterator{}, nil
+			return core.ZeroIterator(), nil
 		}
 
-		// next time the function is called it will start from the last fetched event +1
 		start = events[len(events)-1].GlobalVersion + 1
-		return &iterator{events: events}, nil
+		return func(yield func(core.Event, error) bool) {
+			for _, e := range events {
+				if !yield(e, nil) {
+					return
+				}
+			}
+		}, nil
 	}
 }
