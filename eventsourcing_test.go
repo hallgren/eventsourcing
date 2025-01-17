@@ -8,60 +8,9 @@ import (
 	"time"
 
 	"github.com/hallgren/eventsourcing"
-	"github.com/hallgren/eventsourcing/aggregate"
 	"github.com/hallgren/eventsourcing/core"
 	"github.com/hallgren/eventsourcing/eventstore/memory"
 )
-
-// Person aggregate
-type Person struct {
-	aggregate.Root
-	Name string
-	Age  int
-	Dead int
-}
-
-// Born event
-type Born struct {
-	Name string
-}
-
-// AgedOneYear event
-type AgedOneYear struct {
-}
-
-// Register bind the events to the repository when the aggregate is registered.
-func (person *Person) Register(f eventsourcing.RegisterFunc) {
-	f(&Born{}, &AgedOneYear{})
-}
-
-// Transition the person state dependent on the events
-func (person *Person) Transition(event eventsourcing.Event) {
-	switch e := event.Data().(type) {
-	case *Born:
-		person.Age = 0
-		person.Name = e.Name
-	case *AgedOneYear:
-		person.Age += 1
-	}
-}
-
-// CreatePerson constructor for the Person
-func CreatePerson(name string) (*Person, error) {
-	if name == "" {
-		return nil, errors.New("name can't be blank")
-	}
-	person := Person{}
-	person.TrackChange(&person, &Born{Name: name})
-	return &person, nil
-}
-
-// GrowOlder command
-func (person *Person) GrowOlder() {
-	metaData := make(map[string]interface{})
-	metaData["foo"] = "bar"
-	person.TrackChangeWithMetadata(person, &AgedOneYear{}, metaData)
-}
 
 func events() []eventsourcing.Event {
 	events := make([]eventsourcing.Event, 0)
@@ -84,12 +33,12 @@ func TestGetWithContext(t *testing.T) {
 	es := memory.Create()
 	eventsourcing.Register(&Person{})
 	e := events()
-	_, err := eventsourcing.Save(es, events())
+	_, err := eventsourcing.SaveEvents(es, events())
 	if err != nil {
 		t.Fatalf("could not save aggregate, err: %v", err)
 	}
 
-	events, err := eventsourcing.Get(context.Background(), es, "123", "Person", 0)
+	events, err := eventsourcing.GetEvents(context.Background(), es, "123", "Person", 0)
 	if err != nil {
 		t.Fatal("could not get aggregate")
 	}
@@ -105,7 +54,7 @@ func TestGetWithContextCancel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = eventsourcing.Save(es, person.Events())
+	_, err = eventsourcing.SaveEvents(es, person.Events())
 	if err != nil {
 		t.Fatal("could not save aggregate")
 	}
@@ -114,7 +63,7 @@ func TestGetWithContextCancel(t *testing.T) {
 
 	// cancel the context
 	cancel()
-	_, err = eventsourcing.Get(ctx, es, person.ID(), "Person", 0)
+	_, err = eventsourcing.GetEvents(ctx, es, person.ID(), "Person", 0)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("expected error context.Canceled but was %v", err)
 	}
@@ -140,7 +89,7 @@ func TestSubscriptionAllEvent(t *testing.T) {
 	person.GrowOlder()
 	person.GrowOlder()
 
-	_, err = eventsourcing.Save(eventStore, person.Events())
+	_, err = eventsourcing.SaveEvents(eventStore, person.Events())
 	if err != nil {
 		t.Fatal("could not save aggregate")
 	}

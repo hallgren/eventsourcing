@@ -6,12 +6,11 @@ import (
 	"testing"
 
 	"github.com/hallgren/eventsourcing"
-	"github.com/hallgren/eventsourcing/aggregate"
 	"github.com/hallgren/eventsourcing/core"
 )
 
 type AnAggregate struct {
-	aggregate.Root
+	eventsourcing.Root
 }
 
 func (a *AnAggregate) Transition(e eventsourcing.Event)      {}
@@ -22,7 +21,7 @@ type AnEvent struct {
 }
 
 type AnotherAggregate struct {
-	aggregate.Root
+	eventsourcing.Root
 }
 
 func (a *AnotherAggregate) Transition(e eventsourcing.Event)      {}

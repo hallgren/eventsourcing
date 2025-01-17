@@ -1,4 +1,4 @@
-package aggregate_test
+package eventsourcing_test
 
 import (
 	"context"
@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/hallgren/eventsourcing"
-	"github.com/hallgren/eventsourcing/aggregate"
 	"github.com/hallgren/eventsourcing/core"
 	"github.com/hallgren/eventsourcing/eventstore/memory"
 	snap "github.com/hallgren/eventsourcing/snapshotstore/memory"
@@ -14,12 +13,12 @@ import (
 
 func createPerson() *Person {
 	es := memory.Create()
-	aggregate.Register(&Person{})
+	eventsourcing.Register(&Person{})
 	person, err := CreatePerson("kalle")
 	if err != nil {
 		panic(err)
 	}
-	aggregate.Save(es, person)
+	eventsourcing.Save(es, person)
 
 	return person
 }
@@ -27,13 +26,13 @@ func createPerson() *Person {
 func TestSaveAndGetSnapshot(t *testing.T) {
 	snapshotStore := snap.Create()
 	person := createPerson()
-	err := aggregate.SaveSnapshot(snapshotStore, person)
+	err := eventsourcing.SaveSnapshot(snapshotStore, person)
 	if err != nil {
 		t.Fatalf("could not save aggregate, err: %v", err)
 	}
 
 	twin := Person{}
-	err = aggregate.GetSnapshot(context.Background(), snapshotStore, person.ID(), &twin)
+	err = eventsourcing.GetSnapshot(context.Background(), snapshotStore, person.ID(), &twin)
 	if err != nil {
 		t.Fatalf("could not get aggregate, err: %v", err)
 	}
@@ -56,7 +55,7 @@ func TestGetNoneExistingSnapshotOrEvents(t *testing.T) {
 	snapshotStore := snap.Create()
 	person := Person{}
 
-	err := aggregate.GetSnapshot(context.Background(), snapshotStore, "none_existing_id", &person)
+	err := eventsourcing.GetSnapshot(context.Background(), snapshotStore, "none_existing_id", &person)
 	if !errors.Is(err, eventsourcing.ErrAggregateNotFound) {
 		t.Fatal("should get error when no snapshot or event stored for aggregate")
 	}
@@ -66,7 +65,7 @@ func TestGetNoneExistingSnapshot(t *testing.T) {
 	snapshotStore := snap.Create()
 
 	person := Person{}
-	err := aggregate.GetSnapshot(context.Background(), snapshotStore, "none_existing_id", &person)
+	err := eventsourcing.GetSnapshot(context.Background(), snapshotStore, "none_existing_id", &person)
 	if !errors.Is(err, eventsourcing.ErrAggregateNotFound) {
 		t.Fatal("should get error when no snapshot stored for aggregate")
 	}
@@ -79,7 +78,7 @@ func TestSaveSnapshotWithUnsavedEvents(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = aggregate.SaveSnapshot(snapshotStore, person)
+	err = eventsourcing.SaveSnapshot(snapshotStore, person)
 	if err == nil {
 		t.Fatalf("should not be able to save snapshot with unsaved events")
 	}
@@ -87,7 +86,7 @@ func TestSaveSnapshotWithUnsavedEvents(t *testing.T) {
 
 // test custom snapshot struct to handle non-exported properties on aggregate
 type snapshot struct {
-	aggregate.Root
+	eventsourcing.Root
 	unexported string
 	Exported   string
 	// to be able to save the snapshot after events are added to it.
@@ -99,17 +98,17 @@ type Event2 struct{}
 
 func New() *snapshot {
 	es := memory.Create()
-	aggregate.Register(&snapshot{})
+	eventsourcing.Register(&snapshot{})
 	s := snapshot{}
 	s.TrackChange(&s, &Event{})
 	s.repo = es
-	aggregate.Save(es, &s)
+	eventsourcing.Save(es, &s)
 	return &s
 }
 
 func (s *snapshot) Command() {
 	s.TrackChange(s, &Event2{})
-	aggregate.Save(s.repo, s)
+	eventsourcing.Save(s.repo, s)
 }
 
 func (s *snapshot) Transition(e eventsourcing.Event) {
@@ -133,7 +132,7 @@ type snapshotInternal struct {
 	Exported   string
 }
 
-func (s *snapshot) SerializeSnapshot(m aggregate.SerializeFunc) ([]byte, error) {
+func (s *snapshot) SerializeSnapshot(m eventsourcing.SerializeFunc) ([]byte, error) {
 	snap := snapshotInternal{
 		UnExported: s.unexported,
 		Exported:   s.Exported,
@@ -141,7 +140,7 @@ func (s *snapshot) SerializeSnapshot(m aggregate.SerializeFunc) ([]byte, error) 
 	return m(snap)
 }
 
-func (s *snapshot) DeserializeSnapshot(m aggregate.DeserializeFunc, b []byte) error {
+func (s *snapshot) DeserializeSnapshot(m eventsourcing.DeserializeFunc, b []byte) error {
 	snap := snapshotInternal{}
 	err := m(b, &snap)
 	if err != nil {
@@ -156,19 +155,19 @@ func TestSnapshotNoneExported(t *testing.T) {
 	snapshotStore := snap.Create()
 
 	snap := New()
-	err := aggregate.SaveSnapshot(snapshotStore, snap)
+	err := eventsourcing.SaveSnapshot(snapshotStore, snap)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	snap.Command()
-	err = aggregate.SaveSnapshot(snapshotStore, snap)
+	err = eventsourcing.SaveSnapshot(snapshotStore, snap)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	snap2 := snapshot{}
-	err = aggregate.GetSnapshot(context.Background(), snapshotStore, snap.ID(), &snap2)
+	err = eventsourcing.GetSnapshot(context.Background(), snapshotStore, snap.ID(), &snap2)
 	if err != nil {
 		t.Fatal(err)
 	}

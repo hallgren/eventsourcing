@@ -1,18 +1,17 @@
-package aggregate
+package eventsourcing
 
 import (
 	"context"
 	"reflect"
 
-	"github.com/hallgren/eventsourcing"
 	"github.com/hallgren/eventsourcing/core"
 )
 
 // Aggregate interface to use the aggregate root specific methods
 type aggregate interface {
 	root() *Root
-	Transition(event eventsourcing.Event)
-	Register(eventsourcing.RegisterFunc)
+	Transition(event Event)
+	Register(RegisterFunc)
 }
 
 // Get returns the aggregate based on its identifier
@@ -23,7 +22,7 @@ func Get(ctx context.Context, es core.EventStore, id string, a aggregate) error 
 
 	root := a.root()
 
-	iterator, err := eventsourcing.Get(ctx, es, id, aggregateType(a), root.Version())
+	iterator, err := GetEvents(ctx, es, id, aggregateType(a), root.Version())
 	if err != nil {
 		return err
 	}
@@ -36,11 +35,11 @@ func Get(ctx context.Context, es core.EventStore, id string, a aggregate) error 
 			if err != nil {
 				return err
 			}
-			root.BuildFromHistory(a, []eventsourcing.Event{event})
+			root.BuildFromHistory(a, []Event{event})
 		}
 	}
 	if root.Version() == 0 {
-		return eventsourcing.ErrAggregateNotFound
+		return ErrAggregateNotFound
 	}
 	return nil
 }
@@ -63,7 +62,7 @@ func Save(es core.EventStore, a aggregate) error {
 		return nil
 	}
 
-	globalVersion, err := eventsourcing.Save(es, root.Events())
+	globalVersion, err := SaveEvents(es, root.Events())
 	if err != nil {
 		return err
 	}
@@ -73,12 +72,12 @@ func Save(es core.EventStore, a aggregate) error {
 	// set internal properties and reset the events slice
 	lastEvent := root.aggregateEvents[len(root.aggregateEvents)-1]
 	root.aggregateVersion = lastEvent.Version()
-	root.aggregateEvents = []eventsourcing.Event{}
+	root.aggregateEvents = []Event{}
 
 	return nil
 }
 
 // Register registers the aggregate and its events
 func Register(a aggregate) {
-	eventsourcing.Register(a)
+	register.Register(a)
 }

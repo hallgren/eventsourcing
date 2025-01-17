@@ -1,4 +1,4 @@
-package aggregate_test
+package eventsourcing_test
 
 import (
 	"errors"
@@ -7,12 +7,11 @@ import (
 	"time"
 
 	"github.com/hallgren/eventsourcing"
-	"github.com/hallgren/eventsourcing/aggregate"
 )
 
 // Person aggregate
 type Person struct {
-	aggregate.Root
+	eventsourcing.Root
 	Name string
 	Age  int
 	Dead int
@@ -45,7 +44,7 @@ func CreatePersonWithID(id, name string) (*Person, error) {
 
 	person := Person{}
 	err := person.SetID(id)
-	if err == aggregate.ErrAggregateAlreadyExists {
+	if err == eventsourcing.ErrAggregateAlreadyExists {
 		return nil, err
 	} else if err != nil {
 		return nil, err
@@ -200,7 +199,7 @@ func TestSetIDFunc(t *testing.T) {
 		return fmt.Sprint(counter)
 	}
 
-	aggregate.SetIDFunc(f)
+	eventsourcing.SetIDFunc(f)
 	for i := 1; i < 10; i++ {
 		person, _ := CreatePerson("kalle")
 		if person.ID() != fmt.Sprint(i) {

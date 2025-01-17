@@ -1,23 +1,22 @@
-package aggregate_test
+package eventsourcing_test
 
 import (
 	"context"
 	"testing"
 
 	"github.com/hallgren/eventsourcing"
-	"github.com/hallgren/eventsourcing/aggregate"
 	"github.com/hallgren/eventsourcing/eventstore/memory"
 )
 
 func TestSaveAndGet(t *testing.T) {
 	es := memory.Create()
-	aggregate.Register(&Person{})
+	eventsourcing.Register(&Person{})
 
 	person, err := CreatePerson("kalle")
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = aggregate.Save(es, person)
+	err = eventsourcing.Save(es, person)
 	if err != nil {
 		t.Fatalf("could not save aggregate, err: %v", err)
 	}
@@ -28,7 +27,7 @@ func TestSaveAndGet(t *testing.T) {
 	}
 
 	twin := Person{}
-	err = aggregate.Get(context.Background(), es, person.ID(), &twin)
+	err = eventsourcing.Get(context.Background(), es, person.ID(), &twin)
 	if err != nil {
 		t.Fatalf("could not get aggregate err: %v", err)
 	}
@@ -46,10 +45,10 @@ func TestSaveAndGet(t *testing.T) {
 
 func TestGetNoneExistingAggregate(t *testing.T) {
 	es := memory.Create()
-	aggregate.Register(&Person{})
+	eventsourcing.Register(&Person{})
 
 	p := Person{}
-	err := aggregate.Get(context.Background(), es, "none_existing", &p)
+	err := eventsourcing.Get(context.Background(), es, "none_existing", &p)
 	if err != eventsourcing.ErrAggregateNotFound {
 		t.Fatal("could not get aggregate")
 	}
