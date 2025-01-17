@@ -28,32 +28,21 @@ func SetEncoder(e eventsourcing.Encoder) {
 	encoder = e
 }
 
-type SnapshotRepository struct {
-	snapshotStore core.SnapshotStore
-}
-
-// NewSnapshotRepository factory function
-func NewSnapshotRepository(snapshotStore core.SnapshotStore) *SnapshotRepository {
-	return &SnapshotRepository{
-		snapshotStore: snapshotStore,
-	}
-}
-
 // GetSnapshot returns aggregate that is based on the snapshot data
 // Beware that it could be more events that has happened after the snapshot was taken
-func (sr *SnapshotRepository) Get(ctx context.Context, id string, a aggregate) error {
+func GetSnapshot(ctx context.Context, ss core.SnapshotStore, id string, a aggregate) error {
 	if reflect.ValueOf(a).Kind() != reflect.Ptr {
 		return ErrAggregateNeedsToBeAPointer
 	}
-	err := sr.getSnapshot(ctx, id, a)
+	err := getSnapshot(ctx, ss, id, a)
 	if err != nil && errors.Is(err, core.ErrSnapshotNotFound) {
 		return eventsourcing.ErrAggregateNotFound
 	}
 	return err
 }
 
-func (sr *SnapshotRepository) getSnapshot(ctx context.Context, id string, a aggregate) error {
-	s, err := sr.snapshotStore.Get(ctx, id, aggregateType(a))
+func getSnapshot(ctx context.Context, ss core.SnapshotStore, id string, a aggregate) error {
+	s, err := ss.Get(ctx, id, aggregateType(a))
 	if err != nil {
 		return err
 	}
@@ -82,7 +71,7 @@ func (sr *SnapshotRepository) getSnapshot(ctx context.Context, id string, a aggr
 }
 
 // SaveSnapshot will only store the snapshot and will return an error if there are events that are not stored
-func (sr *SnapshotRepository) Save(a aggregate) error {
+func SaveSnapshot(ss core.SnapshotStore, a aggregate) error {
 	root := a.root()
 	if len(root.Events()) > 0 {
 		return ErrUnsavedEvents
@@ -112,6 +101,6 @@ func (sr *SnapshotRepository) Save(a aggregate) error {
 		State:         state,
 	}
 
-	err = sr.snapshotStore.Save(snapshot)
+	err = ss.Save(snapshot)
 	return err
 }

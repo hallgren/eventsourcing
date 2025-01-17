@@ -15,18 +15,6 @@ type aggregate interface {
 	Register(eventsourcing.RegisterFunc)
 }
 
-type AggregateRepository struct {
-	es core.EventStore
-	sr *SnapshotRepository
-}
-
-func NewAggregateRepository(es core.EventStore, sr *SnapshotRepository) *AggregateRepository {
-	return &AggregateRepository{
-		es: es,
-		sr: sr,
-	}
-}
-
 // Get returns the aggregate based on its identifier
 func Get(ctx context.Context, es core.EventStore, id string, a aggregate) error {
 	if reflect.ValueOf(a).Kind() != reflect.Ptr {
@@ -79,14 +67,6 @@ func Save(es core.EventStore, a aggregate) error {
 	root.aggregateEvents = []eventsourcing.Event{}
 
 	return nil
-}
-
-// SaveSnapshot calls the underlaying snapshot repository if present
-func (ar *AggregateRepository) SaveSnapshot(a aggregate) error {
-	if ar.sr != nil {
-		return nil
-	}
-	return ar.sr.Save(a)
 }
 
 // Register registers the aggregate and its events
