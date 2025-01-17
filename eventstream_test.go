@@ -8,6 +8,7 @@ import (
 	"github.com/hallgren/eventsourcing"
 	"github.com/hallgren/eventsourcing/aggregate"
 	"github.com/hallgren/eventsourcing/core"
+	"github.com/hallgren/eventsourcing/eventstore/memory"
 )
 
 type AnAggregate struct {
@@ -40,7 +41,9 @@ func eventToByte(i interface{}) []byte {
 
 func TestSubAll(t *testing.T) {
 	var streamEvent *eventsourcing.Event
-	e := eventsourcing.NewEventStream()
+	es := memory.Create()
+	er := eventsourcing.NewEventRepository(es)
+	e := eventsourcing.NewEventStream(er)
 	f := func(e eventsourcing.Event) {
 		streamEvent = &e
 	}
@@ -58,7 +61,9 @@ func TestSubAll(t *testing.T) {
 
 func TestSubSpecificEvent(t *testing.T) {
 	var streamEvent *eventsourcing.Event
-	e := eventsourcing.NewEventStream()
+	es := memory.Create()
+	er := eventsourcing.NewEventRepository(es)
+	e := eventsourcing.NewEventStream(er)
 	f := func(e eventsourcing.Event) {
 		streamEvent = &e
 	}
@@ -78,7 +83,9 @@ func TestSubSpecificEvent(t *testing.T) {
 
 func TestSubSpecificEventMultiplePublish(t *testing.T) {
 	var streamEvents []*eventsourcing.Event
-	e := eventsourcing.NewEventStream()
+	es := memory.Create()
+	er := eventsourcing.NewEventRepository(es)
+	e := eventsourcing.NewEventStream(er)
 	f := func(e eventsourcing.Event) {
 		streamEvents = append(streamEvents, &e)
 	}
@@ -118,7 +125,9 @@ func TestSubSpecificEventMultiplePublish(t *testing.T) {
 
 func TestUpdateNoneSubscribedEvent(t *testing.T) {
 	var streamEvent *eventsourcing.Event = nil
-	e := eventsourcing.NewEventStream()
+	es := memory.Create()
+	er := eventsourcing.NewEventRepository(es)
+	e := eventsourcing.NewEventStream(er)
 	f := func(e eventsourcing.Event) {
 		streamEvent = &e
 	}
@@ -137,7 +146,9 @@ func TestManySubscribers(t *testing.T) {
 	streamEvent3 := make([]eventsourcing.Event, 0)
 	streamEvent4 := make([]eventsourcing.Event, 0)
 
-	e := eventsourcing.NewEventStream()
+	es := memory.Create()
+	er := eventsourcing.NewEventRepository(es)
+	e := eventsourcing.NewEventStream(er)
 	f1 := func(e eventsourcing.Event) {
 		streamEvent1 = append(streamEvent1, e)
 	}
@@ -181,7 +192,9 @@ func TestManySubscribers(t *testing.T) {
 
 func TestParallelPublish(t *testing.T) {
 	streamEvent := make([]eventsourcing.Event, 0)
-	e := eventsourcing.NewEventStream()
+	es := memory.Create()
+	er := eventsourcing.NewEventRepository(es)
+	e := eventsourcing.NewEventStream(er)
 
 	// functions to bind to event subscription
 	f1 := func(e eventsourcing.Event) {
@@ -231,8 +244,10 @@ func TestParallelPublish(t *testing.T) {
 }
 
 func TestClose(t *testing.T) {
+	es := memory.Create()
+	er := eventsourcing.NewEventRepository(es)
 	count := 0
-	e := eventsourcing.NewEventStream()
+	e := eventsourcing.NewEventStream(er)
 	f := func(e eventsourcing.Event) {
 		count++
 	}
@@ -260,7 +275,9 @@ func TestClose(t *testing.T) {
 func TestName(t *testing.T) {
 	var streamEvent eventsourcing.Event
 	var count int
-	e := eventsourcing.NewEventStream()
+	es := memory.Create()
+	er := eventsourcing.NewEventRepository(es)
+	e := eventsourcing.NewEventStream(er)
 	f := func(e eventsourcing.Event) {
 		count++
 		streamEvent = e
