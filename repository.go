@@ -8,12 +8,6 @@ import (
 	"github.com/hallgren/eventsourcing/core"
 )
 
-type EventSubscribers interface {
-	All(f func(e Event)) *subscription
-	Event(f func(e Event), events ...interface{}) *subscription
-	Name(f func(e Event), aggregate string, events ...string) *subscription
-}
-
 type Encoder interface {
 	Serialize(v interface{}) ([]byte, error)
 	Deserialize(data []byte, v interface{}) error
