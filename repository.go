@@ -35,28 +35,26 @@ var (
 
 // EventRepository is the returned instance from the factory function
 type EventRepository struct {
-	publisherFunc func(event []Event)
-	eventStore    core.EventStore
-	// register that convert the Data []byte to correct type
-	register *Register
-	// encoder to serialize / deserialize events
-	encoder Encoder
+	eventStore core.EventStore
+	register   *Register
 }
+
+// global encoder used for events
+var encoder Encoder = EncoderJSON{}
+
+// Encoder change the default JSON encoder that serializer/deserializer events
+func SetEncoder(e Encoder) {
+	encoder = e
+}
+
+var publisherFunc = func(events []Event) {}
 
 // NewRepository factory function
 func NewEventRepository(eventStore core.EventStore) *EventRepository {
 	return &EventRepository{
-		eventStore:    eventStore,
-		publisherFunc: func(event []Event) {}, // defaults to noop
-		register:      NewRegister(),
-		encoder:       EncoderJSON{}, // Default to JSON encoder
+		eventStore: eventStore,
+		register:   NewRegister(),
 	}
-}
-
-// Encoder change the default JSON encoder that serializer/deserializer events
-func (er *EventRepository) Encoder(e Encoder) {
-	// set encoder on event repository
-	er.encoder = e
 }
 
 func (er *EventRepository) AggregateEvents(ctx context.Context, id, aggregateType string, fromVersion Version) (*Iterator, error) {
@@ -75,11 +73,11 @@ func (er *EventRepository) Save(events []Event) (Version, error) {
 	var esEvents = make([]core.Event, 0, len(events))
 
 	for _, event := range events {
-		data, err := er.encoder.Serialize(event.Data())
+		data, err := encoder.Serialize(event.Data())
 		if err != nil {
 			return 0, err
 		}
-		metadata, err := er.encoder.Serialize(event.Metadata())
+		metadata, err := encoder.Serialize(event.Metadata())
 		if err != nil {
 			return 0, err
 		}
@@ -108,7 +106,7 @@ func (er *EventRepository) Save(events []Event) (Version, error) {
 		return 0, fmt.Errorf("error from event store: %w", err)
 	}
 	// publish the saved events to subscribers
-	er.publisherFunc(events)
+	publisherFunc(events)
 
 	return Version(esEvents[len(esEvents)-1].GlobalVersion), nil
 }

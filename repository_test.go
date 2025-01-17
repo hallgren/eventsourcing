@@ -128,7 +128,7 @@ func TestSubscriptionAllEvent(t *testing.T) {
 	repo := eventsourcing.NewEventRepository(memory.Create())
 	repo.Register(&Person{})
 
-	es := eventsourcing.NewEventStream(repo)
+	es := eventsourcing.NewEventStream()
 	s := es.All(f)
 	defer s.Close()
 

@@ -32,14 +32,14 @@ func (s *subscription) Close() {
 }
 
 // NewEventStream factory function
-func NewEventStream(er *EventRepository) *EventStream {
+func NewEventStream() *EventStream {
 	es := &EventStream{
 		specificEvents: make(map[reflect.Type][]*subscription),
 		all:            make([]*subscription, 0),
 		names:          make(map[string][]*subscription),
 	}
-	// binds the publish function to the event repository
-	er.publisherFunc = es.Publish
+	// binds the Publish function to the global event publishing function
+	publisherFunc = es.Publish
 	return es
 }
 
