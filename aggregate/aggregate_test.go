@@ -10,14 +10,14 @@ import (
 )
 
 func TestSaveAndGet(t *testing.T) {
-	aggrepo := aggregate.NewAggregateRepository(memory.Create(), nil)
-	aggrepo.Register(&Person{})
+	es := memory.Create()
+	aggregate.Register(&Person{})
 
 	person, err := CreatePerson("kalle")
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = aggrepo.Save(person)
+	err = aggregate.Save(es, person)
 	if err != nil {
 		t.Fatalf("could not save aggregate, err: %v", err)
 	}
@@ -28,7 +28,7 @@ func TestSaveAndGet(t *testing.T) {
 	}
 
 	twin := Person{}
-	err = aggrepo.Get(context.Background(), person.ID(), &twin)
+	err = aggregate.Get(context.Background(), es, person.ID(), &twin)
 	if err != nil {
 		t.Fatalf("could not get aggregate err: %v", err)
 	}
@@ -45,11 +45,11 @@ func TestSaveAndGet(t *testing.T) {
 }
 
 func TestGetNoneExistingAggregate(t *testing.T) {
-	aggrepo := aggregate.NewAggregateRepository(memory.Create(), nil)
-	aggrepo.Register(&Person{})
+	es := memory.Create()
+	aggregate.Register(&Person{})
 
 	p := Person{}
-	err := aggrepo.Get(context.Background(), "none_existing", &p)
+	err := aggregate.Get(context.Background(), es, "none_existing", &p)
 	if err != eventsourcing.ErrAggregateNotFound {
 		t.Fatal("could not get aggregate")
 	}

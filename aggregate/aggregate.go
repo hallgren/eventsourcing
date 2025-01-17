@@ -28,17 +28,14 @@ func NewAggregateRepository(es core.EventStore, sr *SnapshotRepository) *Aggrega
 }
 
 // Get returns the aggregate based on its identifier
-func (ar *AggregateRepository) Get(ctx context.Context, id string, a aggregate) error {
+func Get(ctx context.Context, es core.EventStore, id string, a aggregate) error {
 	if reflect.ValueOf(a).Kind() != reflect.Ptr {
 		return ErrAggregateNeedsToBeAPointer
 	}
 
-	if ar.sr != nil {
-		ar.sr.Get(ctx, id, a)
-	}
 	root := a.root()
 
-	iterator, err := eventsourcing.AggregateEvents(ctx, ar.es, id, aggregateType(a), root.Version())
+	iterator, err := eventsourcing.AggregateEvents(ctx, es, id, aggregateType(a), root.Version())
 	if err != nil {
 		return err
 	}
@@ -61,7 +58,7 @@ func (ar *AggregateRepository) Get(ctx context.Context, id string, a aggregate) 
 }
 
 // Save stores the aggregate events and update the snapshot if snapshotstore is present
-func (ar *AggregateRepository) Save(a aggregate) error {
+func Save(es core.EventStore, a aggregate) error {
 	root := a.root()
 
 	// return as quick as possible when no events to process
@@ -69,7 +66,7 @@ func (ar *AggregateRepository) Save(a aggregate) error {
 		return nil
 	}
 
-	globalVersion, err := eventsourcing.Save(ar.es, root.Events())
+	globalVersion, err := eventsourcing.Save(es, root.Events())
 	if err != nil {
 		return err
 	}
@@ -93,6 +90,6 @@ func (ar *AggregateRepository) SaveSnapshot(a aggregate) error {
 }
 
 // Register registers the aggregate and its events
-func (ar *AggregateRepository) Register(a aggregate) {
+func Register(a aggregate) {
 	eventsourcing.Register(a)
 }

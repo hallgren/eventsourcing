@@ -7,6 +7,7 @@ import (
 
 	"github.com/hallgren/eventsourcing"
 	"github.com/hallgren/eventsourcing/aggregate"
+	"github.com/hallgren/eventsourcing/core"
 	"github.com/hallgren/eventsourcing/eventstore/memory"
 	snap "github.com/hallgren/eventsourcing/snapshotstore/memory"
 )
@@ -16,13 +17,13 @@ func setupSnapshotRepository() *aggregate.SnapshotRepository {
 }
 
 func createPerson() *Person {
-	aggrepo := aggregate.NewAggregateRepository(memory.Create(), nil)
-	aggrepo.Register(&Person{})
+	es := memory.Create()
+	aggregate.Register(&Person{})
 	person, err := CreatePerson("kalle")
 	if err != nil {
 		panic(err)
 	}
-	aggrepo.Save(person)
+	aggregate.Save(es, person)
 
 	return person
 }
@@ -94,25 +95,25 @@ type snapshot struct {
 	unexported string
 	Exported   string
 	// to be able to save the snapshot after events are added to it.
-	repo *aggregate.AggregateRepository
+	repo core.EventStore
 }
 
 type Event struct{}
 type Event2 struct{}
 
 func New() *snapshot {
-	aggrepo := aggregate.NewAggregateRepository(memory.Create(), nil)
-	aggrepo.Register(&snapshot{})
+	es := memory.Create()
+	aggregate.Register(&snapshot{})
 	s := snapshot{}
-	s.repo = aggrepo
 	s.TrackChange(&s, &Event{})
-	aggrepo.Save(&s)
+	s.repo = es
+	aggregate.Save(es, &s)
 	return &s
 }
 
 func (s *snapshot) Command() {
 	s.TrackChange(s, &Event2{})
-	s.repo.Save(s)
+	aggregate.Save(s.repo, s)
 }
 
 func (s *snapshot) Transition(e eventsourcing.Event) {
