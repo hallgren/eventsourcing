@@ -35,8 +35,8 @@ var (
 
 // EventRepository is the returned instance from the factory function
 type EventRepository struct {
-	eventStream *EventStream
-	eventStore  core.EventStore
+	publisherFunc func(event []Event)
+	eventStore    core.EventStore
 	// register that convert the Data []byte to correct type
 	register *Register
 	// encoder to serialize / deserialize events
@@ -46,10 +46,10 @@ type EventRepository struct {
 // NewRepository factory function
 func NewEventRepository(eventStore core.EventStore) *EventRepository {
 	return &EventRepository{
-		eventStore:  eventStore,
-		eventStream: NewEventStream(),
-		register:    NewRegister(),
-		encoder:     EncoderJSON{}, // Default to JSON encoder
+		eventStore:    eventStore,
+		publisherFunc: func(event []Event) {}, // defaults to noop
+		register:      NewRegister(),
+		encoder:       EncoderJSON{}, // Default to JSON encoder
 	}
 }
 
@@ -57,11 +57,6 @@ func NewEventRepository(eventStore core.EventStore) *EventRepository {
 func (er *EventRepository) Encoder(e Encoder) {
 	// set encoder on event repository
 	er.encoder = e
-}
-
-// Subscribers returns an interface with all event subscribers
-func (er *EventRepository) Subscribers() EventSubscribers {
-	return er.eventStream
 }
 
 func (er *EventRepository) AggregateEvents(ctx context.Context, id, aggregateType string, fromVersion Version) (*Iterator, error) {
@@ -113,7 +108,7 @@ func (er *EventRepository) Save(events []Event) (Version, error) {
 		return 0, fmt.Errorf("error from event store: %w", err)
 	}
 	// publish the saved events to subscribers
-	er.eventStream.Publish(events)
+	er.publisherFunc(events)
 
 	return Version(esEvents[len(esEvents)-1].GlobalVersion), nil
 }
