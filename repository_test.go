@@ -89,7 +89,7 @@ func TestGetWithContext(t *testing.T) {
 		t.Fatalf("could not save aggregate, err: %v", err)
 	}
 
-	events, err := eventsourcing.AggregateEvents(context.Background(), es, "123", "Person", 0)
+	events, err := eventsourcing.Get(context.Background(), es, "123", "Person", 0)
 	if err != nil {
 		t.Fatal("could not get aggregate")
 	}
@@ -114,7 +114,7 @@ func TestGetWithContextCancel(t *testing.T) {
 
 	// cancel the context
 	cancel()
-	_, err = eventsourcing.AggregateEvents(ctx, es, person.ID(), "Person", 0)
+	_, err = eventsourcing.Get(ctx, es, person.ID(), "Person", 0)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("expected error context.Canceled but was %v", err)
 	}

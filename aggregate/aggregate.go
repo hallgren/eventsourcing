@@ -23,7 +23,7 @@ func Get(ctx context.Context, es core.EventStore, id string, a aggregate) error 
 
 	root := a.root()
 
-	iterator, err := eventsourcing.AggregateEvents(ctx, es, id, aggregateType(a), root.Version())
+	iterator, err := eventsourcing.Get(ctx, es, id, aggregateType(a), root.Version())
 	if err != nil {
 		return err
 	}
@@ -43,6 +43,15 @@ func Get(ctx context.Context, es core.EventStore, id string, a aggregate) error 
 		return eventsourcing.ErrAggregateNotFound
 	}
 	return nil
+}
+
+// GetWithSnapshot fetch the aggregate by first get its snapshot and later append events that was saved after the snapshot was stored
+func GetWithSnapshot(ctx context.Context, es core.EventStore, ss core.SnapshotStore, id string, a aggregate) error {
+	err := GetSnapshot(ctx, ss, id, a)
+	if err != nil {
+		return err
+	}
+	return Get(ctx, es, id, a)
 }
 
 // Save stores the aggregate events and update the snapshot if snapshotstore is present

@@ -50,8 +50,8 @@ func ResetRegsiter() {
 
 var publisherFunc = func(events []Event) {}
 
-// AggregateEvents return event iterator based on aggregate inputs from the event store
-func AggregateEvents(ctx context.Context, eventStore core.EventStore, id, aggregateType string, fromVersion Version) (*Iterator, error) {
+// Get return event iterator based on aggregate inputs from the event store
+func Get(ctx context.Context, eventStore core.EventStore, id, aggregateType string, fromVersion Version) (*Iterator, error) {
 	// fetch events after the current version of the aggregate that could be fetched from the snapshot store
 	eventIterator, err := eventStore.Get(ctx, id, aggregateType, core.Version(fromVersion))
 	if err != nil {
