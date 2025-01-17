@@ -25,7 +25,7 @@ func (i *Iterator) Value() (Event, error) {
 		return Event{}, err
 	}
 	// apply the event to the aggregate
-	f, found := i.er.register.EventRegistered(event)
+	f, found := register.EventRegistered(event)
 	if !found {
 		return Event{}, ErrEventNotRegistered
 	}

@@ -350,6 +350,7 @@ func TestStrict(t *testing.T) {
 	// setup
 	es := memory.Create()
 	er := eventsourcing.NewEventRepository(es)
+	eventsourcing.ResetRegsiter()
 
 	// We do not register the Person aggregate with the Born event attached
 	err := createPersonEvent(es, "kalle", 1)

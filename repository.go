@@ -36,7 +36,6 @@ var (
 // EventRepository is the returned instance from the factory function
 type EventRepository struct {
 	eventStore core.EventStore
-	register   *Register
 }
 
 // global encoder used for events
@@ -47,13 +46,20 @@ func SetEncoder(e Encoder) {
 	encoder = e
 }
 
+// global event register
+var register = NewRegister()
+
+// ResetRegsiter reset the event regsiter
+func ResetRegsiter() {
+	register = NewRegister()
+}
+
 var publisherFunc = func(events []Event) {}
 
 // NewRepository factory function
 func NewEventRepository(eventStore core.EventStore) *EventRepository {
 	return &EventRepository{
 		eventStore: eventStore,
-		register:   NewRegister(),
 	}
 }
 
@@ -91,7 +97,7 @@ func (er *EventRepository) Save(events []Event) (Version, error) {
 			Metadata:      metadata,
 			Reason:        event.Reason(),
 		}
-		_, ok := er.register.EventRegistered(esEvent)
+		_, ok := register.EventRegistered(esEvent)
 		if !ok {
 			return 0, ErrEventNotRegistered
 		}
@@ -113,5 +119,5 @@ func (er *EventRepository) Save(events []Event) (Version, error) {
 
 // Regsiter registers the aggregate in the register
 func (er *EventRepository) Register(a agg) {
-	er.register.Register(a)
+	register.Register(a)
 }

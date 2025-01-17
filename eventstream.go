@@ -31,7 +31,7 @@ func (s *subscription) Close() {
 	s.close()
 }
 
-// NewEventStream factory function
+// NewEventStream constructor
 func NewEventStream() *EventStream {
 	es := &EventStream{
 		specificEvents: make(map[reflect.Type][]*subscription),
