@@ -21,16 +21,21 @@ type snapshot interface {
 	DeserializeSnapshot(DeserializeFunc, []byte) error
 }
 
+var encoder eventsourcing.Encoder = eventsourcing.EncoderJSON{}
+
+// SetEncoder sets the snapshot encoder
+func SetEncoder(e eventsourcing.Encoder) {
+	encoder = e
+}
+
 type SnapshotRepository struct {
 	snapshotStore core.SnapshotStore
-	Encoder       eventsourcing.Encoder
 }
 
 // NewSnapshotRepository factory function
 func NewSnapshotRepository(snapshotStore core.SnapshotStore) *SnapshotRepository {
 	return &SnapshotRepository{
 		snapshotStore: snapshotStore,
-		Encoder:       eventsourcing.EncoderJSON{},
 	}
 }
 
@@ -56,12 +61,12 @@ func (sr *SnapshotRepository) getSnapshot(ctx context.Context, id string, a aggr
 	// Does the aggregate have specific snapshot handling
 	sa, ok := a.(snapshot)
 	if ok {
-		err = sa.DeserializeSnapshot(sr.Encoder.Deserialize, s.State)
+		err = sa.DeserializeSnapshot(encoder.Deserialize, s.State)
 		if err != nil {
 			return err
 		}
 	} else {
-		err = sr.Encoder.Deserialize(s.State, a)
+		err = encoder.Deserialize(s.State, a)
 		if err != nil {
 			return err
 		}
@@ -88,12 +93,12 @@ func (sr *SnapshotRepository) Save(a aggregate) error {
 	// Does the aggregate have specific snapshot handling
 	sa, ok := a.(snapshot)
 	if ok {
-		state, err = sa.SerializeSnapshot(sr.Encoder.Serialize)
+		state, err = sa.SerializeSnapshot(encoder.Serialize)
 		if err != nil {
 			return err
 		}
 	} else {
-		state, err = sr.Encoder.Serialize(a)
+		state, err = encoder.Serialize(a)
 		if err != nil {
 			return err
 		}
