@@ -81,15 +81,15 @@ func events() []eventsourcing.Event {
 }
 
 func TestGetWithContext(t *testing.T) {
-	repo := eventsourcing.NewEventRepository(memory.Create())
-	repo.Register(&Person{})
+	es := memory.Create()
+	eventsourcing.Register(&Person{})
 	e := events()
-	_, err := repo.Save(events())
+	_, err := eventsourcing.Save(es, events())
 	if err != nil {
 		t.Fatalf("could not save aggregate, err: %v", err)
 	}
 
-	events, err := repo.AggregateEvents(context.Background(), "123", "Person", 0)
+	events, err := eventsourcing.AggregateEvents(context.Background(), es, "123", "Person", 0)
 	if err != nil {
 		t.Fatal("could not get aggregate")
 	}
@@ -98,14 +98,14 @@ func TestGetWithContext(t *testing.T) {
 }
 
 func TestGetWithContextCancel(t *testing.T) {
-	repo := eventsourcing.NewEventRepository(memory.Create())
-	repo.Register(&Person{})
+	es := memory.Create()
+	eventsourcing.Register(&Person{})
 
 	person, err := CreatePerson("kalle")
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = repo.Save(person.Events())
+	_, err = eventsourcing.Save(es, person.Events())
 	if err != nil {
 		t.Fatal("could not save aggregate")
 	}
@@ -114,7 +114,7 @@ func TestGetWithContextCancel(t *testing.T) {
 
 	// cancel the context
 	cancel()
-	_, err = repo.AggregateEvents(ctx, person.ID(), "Person", 0)
+	_, err = eventsourcing.AggregateEvents(ctx, es, person.ID(), "Person", 0)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("expected error context.Canceled but was %v", err)
 	}
@@ -122,11 +122,11 @@ func TestGetWithContextCancel(t *testing.T) {
 
 func TestSubscriptionAllEvent(t *testing.T) {
 	counter := 0
+	eventStore := memory.Create()
 	f := func(e eventsourcing.Event) {
 		counter++
 	}
-	repo := eventsourcing.NewEventRepository(memory.Create())
-	repo.Register(&Person{})
+	eventsourcing.Register(&Person{})
 
 	es := eventsourcing.NewEventStream()
 	s := es.All(f)
@@ -140,7 +140,7 @@ func TestSubscriptionAllEvent(t *testing.T) {
 	person.GrowOlder()
 	person.GrowOlder()
 
-	_, err = repo.Save(person.Events())
+	_, err = eventsourcing.Save(eventStore, person.Events())
 	if err != nil {
 		t.Fatal("could not save aggregate")
 	}

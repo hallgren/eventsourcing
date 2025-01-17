@@ -56,26 +56,20 @@ func ResetRegsiter() {
 
 var publisherFunc = func(events []Event) {}
 
-// NewRepository factory function
-func NewEventRepository(eventStore core.EventStore) *EventRepository {
-	return &EventRepository{
-		eventStore: eventStore,
-	}
-}
-
-func (er *EventRepository) AggregateEvents(ctx context.Context, id, aggregateType string, fromVersion Version) (*Iterator, error) {
+// AggregateEvents return event iterator based on aggregate inputs from the event store
+func AggregateEvents(ctx context.Context, eventStore core.EventStore, id, aggregateType string, fromVersion Version) (*Iterator, error) {
 	// fetch events after the current version of the aggregate that could be fetched from the snapshot store
-	eventIterator, err := er.eventStore.Get(ctx, id, aggregateType, core.Version(fromVersion))
+	eventIterator, err := eventStore.Get(ctx, id, aggregateType, core.Version(fromVersion))
 	if err != nil {
 		return nil, err
 	}
 	return &Iterator{
 		iterator: eventIterator,
-		er:       er,
 	}, nil
 }
 
-func (er *EventRepository) Save(events []Event) (Version, error) {
+// Save events to the event store
+func Save(eventStore core.EventStore, events []Event) (Version, error) {
 	var esEvents = make([]core.Event, 0, len(events))
 
 	for _, event := range events {
@@ -104,7 +98,7 @@ func (er *EventRepository) Save(events []Event) (Version, error) {
 		esEvents = append(esEvents, esEvent)
 	}
 
-	err := er.eventStore.Save(esEvents)
+	err := eventStore.Save(esEvents)
 	if err != nil {
 		if errors.Is(err, core.ErrConcurrency) {
 			return 0, ErrConcurrency
@@ -118,6 +112,6 @@ func (er *EventRepository) Save(events []Event) (Version, error) {
 }
 
 // Regsiter registers the aggregate in the register
-func (er *EventRepository) Register(a agg) {
+func Register(a agg) {
 	register.Register(a)
 }

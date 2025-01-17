@@ -15,19 +15,11 @@ type fetchFunc func() (core.Iterator, error)
 type callbackFunc func(e Event) error
 
 type ProjectionRepository struct {
-	er    *EventRepository
 	count int
 }
 
 // ErrProjectionAlreadyRunning is returned if Run is called on an already running projection
 var ErrProjectionAlreadyRunning = errors.New("projection is already running")
-
-// NewProjectionRepository returns a ProjectionHandler
-func NewProjectionRepository(er *EventRepository) *ProjectionRepository {
-	return &ProjectionRepository{
-		er: er,
-	}
-}
 
 type Projection struct {
 	running   atomic.Bool
@@ -42,7 +34,6 @@ type Projection struct {
 // Group runs projections concurrently
 type Group struct {
 	Pace        time.Duration // Pace is used when a projection is running and it reaches the end of the event stream
-	handler     *ProjectionRepository
 	projections []*Projection
 	cancelF     context.CancelFunc
 	wg          sync.WaitGroup
@@ -57,16 +48,13 @@ type ProjectionResult struct {
 }
 
 // Projection creates a projection that will run down an event stream
-func (pr *ProjectionRepository) Projection(fetchF fetchFunc, callbackF callbackFunc) *Projection {
+func NewProjection(fetchF fetchFunc, callbackF callbackFunc) *Projection {
 	projection := Projection{
 		fetchF:    fetchF,
 		callbackF: callbackF,
-		handler:   pr,
 		trigger:   make(chan func()),
-		Strict:    true,                        // Default strict is active
-		Name:      fmt.Sprintf("%d", pr.count), // Default the name to it's creation index
+		Strict:    true, // Default strict is active
 	}
-	pr.count++
 	return &projection
 }
 
@@ -172,7 +160,6 @@ func (p *Projection) RunOnce() (bool, ProjectionResult) {
 	}
 	iterator := &Iterator{
 		iterator: coreIterator,
-		er:       p.handler.er,
 	}
 	defer iterator.Close()
 
@@ -201,9 +188,8 @@ func (p *Projection) RunOnce() (bool, ProjectionResult) {
 }
 
 // Group runs a group of projections concurrently
-func (ph *ProjectionRepository) Group(projections ...*Projection) *Group {
+func NewProjectionGroup(projections ...*Projection) *Group {
 	return &Group{
-		handler:     ph,
 		projections: projections,
 		cancelF:     func() {},
 		Pace:        time.Second * 10, // Default pace 10 seconds
@@ -267,7 +253,7 @@ func (g *Group) Stop() {
 
 // Race runs the projections to the end of the events streams.
 // Can be used on a stale event stream with no more events coming in or when you want to know when all projections are done.
-func (p *ProjectionRepository) Race(cancelOnError bool, projections ...*Projection) ([]ProjectionResult, error) {
+func Race(cancelOnError bool, projections ...*Projection) ([]ProjectionResult, error) {
 	var lock sync.Mutex
 	var causingErr error
 

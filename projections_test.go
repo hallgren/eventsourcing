@@ -46,8 +46,7 @@ func createPersonEvent(es *memory.Memory, name string, age int) error {
 func TestRunOnce(t *testing.T) {
 	// setup
 	es := memory.Create()
-	er := eventsourcing.NewEventRepository(es)
-	er.Register(&Person{})
+	eventsourcing.Register(&Person{})
 
 	projectedName := ""
 
@@ -62,8 +61,7 @@ func TestRunOnce(t *testing.T) {
 	}
 
 	// run projection one event at each run
-	p := eventsourcing.NewProjectionRepository(er)
-	proj := p.Projection(es.All(0, 1), func(event eventsourcing.Event) error {
+	proj := eventsourcing.NewProjection(es.All(0, 1), func(event eventsourcing.Event) error {
 		switch e := event.Data().(type) {
 		case *Born:
 			projectedName = e.Name
@@ -100,8 +98,7 @@ func TestRunOnce(t *testing.T) {
 
 func TestRun(t *testing.T) {
 	es := memory.Create()
-	er := eventsourcing.NewEventRepository(es)
-	er.Register(&Person{})
+	eventsourcing.Register(&Person{})
 
 	projectedName := ""
 	sourceName := "kalle"
@@ -112,8 +109,7 @@ func TestRun(t *testing.T) {
 	}
 
 	// run projection
-	p := eventsourcing.NewProjectionRepository(er)
-	proj := p.Projection(es.All(0, 1), func(event eventsourcing.Event) error {
+	proj := eventsourcing.NewProjection(es.All(0, 1), func(event eventsourcing.Event) error {
 		switch e := event.Data().(type) {
 		case *Born:
 			projectedName = e.Name
@@ -138,8 +134,7 @@ func TestRun(t *testing.T) {
 func TestRunSameProjectionConcurrently(t *testing.T) {
 	// setup
 	es := memory.Create()
-	er := eventsourcing.NewEventRepository(es)
-	er.Register(&Person{})
+	eventsourcing.Register(&Person{})
 
 	sourceName := "kalle"
 
@@ -151,8 +146,7 @@ func TestRunSameProjectionConcurrently(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	// run projection
-	p := eventsourcing.NewProjectionRepository(er)
-	proj := p.Projection(es.All(0, 1), func(event eventsourcing.Event) error {
+	proj := eventsourcing.NewProjection(es.All(0, 1), func(event eventsourcing.Event) error {
 		wg.Done()
 		return nil
 	})
@@ -177,15 +171,13 @@ func TestRunSameProjectionConcurrently(t *testing.T) {
 func TestTriggerSync(t *testing.T) {
 	// setup
 	es := memory.Create()
-	er := eventsourcing.NewEventRepository(es)
-	er.Register(&Person{})
+	eventsourcing.Register(&Person{})
 
 	projectedName := ""
 	sourceName := "kalle"
 
 	// run projection
-	p := eventsourcing.NewProjectionRepository(er)
-	proj := p.Projection(es.All(0, 1), func(event eventsourcing.Event) error {
+	proj := eventsourcing.NewProjection(es.All(0, 1), func(event eventsourcing.Event) error {
 		switch e := event.Data().(type) {
 		case *Born:
 			projectedName = e.Name
@@ -193,7 +185,7 @@ func TestTriggerSync(t *testing.T) {
 		return nil
 	})
 
-	group := p.Group(proj)
+	group := eventsourcing.NewProjectionGroup(proj)
 	group.Start()
 	defer group.Stop()
 
@@ -223,8 +215,7 @@ func TestTriggerSync(t *testing.T) {
 func TestTriggerAsync(t *testing.T) {
 	// setup
 	es := memory.Create()
-	er := eventsourcing.NewEventRepository(es)
-	er.Register(&Person{})
+	eventsourcing.Register(&Person{})
 
 	projectedName := ""
 	sourceName := "kalle"
@@ -233,8 +224,7 @@ func TestTriggerAsync(t *testing.T) {
 	wg.Add(1)
 
 	// run projection
-	p := eventsourcing.NewProjectionRepository(er)
-	proj := p.Projection(es.All(0, 1), func(event eventsourcing.Event) error {
+	proj := eventsourcing.NewProjection(es.All(0, 1), func(event eventsourcing.Event) error {
 		switch e := event.Data().(type) {
 		case *Born:
 			projectedName = e.Name
@@ -243,7 +233,7 @@ func TestTriggerAsync(t *testing.T) {
 		return nil
 	})
 
-	group := p.Group(proj)
+	group := eventsourcing.NewProjectionGroup(proj)
 	group.Start()
 	defer group.Stop()
 
@@ -276,8 +266,7 @@ func TestTriggerAsync(t *testing.T) {
 }
 
 func TestCloseEmptyGroup(t *testing.T) {
-	p := eventsourcing.NewProjectionRepository(eventsourcing.NewEventRepository(memory.Create()))
-	g := p.Group()
+	g := eventsourcing.NewProjectionGroup()
 	g.Stop()
 	g.Start()
 	g.Stop()
@@ -287,20 +276,18 @@ func TestCloseEmptyGroup(t *testing.T) {
 func TestStartMultipleProjections(t *testing.T) {
 	// setup
 	es := memory.Create()
-	er := eventsourcing.NewEventRepository(es)
-	er.Register(&Person{})
+	eventsourcing.Register(&Person{})
 
 	// callback that handles the events
 	callbackF := func(event eventsourcing.Event) error {
 		return nil
 	}
 
-	p := eventsourcing.NewProjectionRepository(er)
-	r1 := p.Projection(es.All(0, 1), callbackF)
-	r2 := p.Projection(es.All(0, 1), callbackF)
-	r3 := p.Projection(es.All(0, 1), callbackF)
+	r1 := eventsourcing.NewProjection(es.All(0, 1), callbackF)
+	r2 := eventsourcing.NewProjection(es.All(0, 1), callbackF)
+	r3 := eventsourcing.NewProjection(es.All(0, 1), callbackF)
 
-	g := p.Group(r1, r2, r3)
+	g := eventsourcing.NewProjectionGroup(r1, r2, r3)
 	g.Start()
 	g.Stop()
 }
@@ -308,8 +295,7 @@ func TestStartMultipleProjections(t *testing.T) {
 func TestErrorFromCallback(t *testing.T) {
 	// setup
 	es := memory.Create()
-	er := eventsourcing.NewEventRepository(es)
-	er.Register(&Person{})
+	eventsourcing.Register(&Person{})
 
 	err := createPersonEvent(es, "kalle", 1)
 	if err != nil {
@@ -324,10 +310,9 @@ func TestErrorFromCallback(t *testing.T) {
 		return ErrApplication
 	}
 
-	p := eventsourcing.NewProjectionRepository(er)
-	r := p.Projection(es.All(0, 1), callbackF)
+	r := eventsourcing.NewProjection(es.All(0, 1), callbackF)
 
-	g := p.Group(r)
+	g := eventsourcing.NewProjectionGroup(r)
 
 	g.Start()
 	defer g.Stop()
@@ -349,7 +334,6 @@ func TestErrorFromCallback(t *testing.T) {
 func TestStrict(t *testing.T) {
 	// setup
 	es := memory.Create()
-	er := eventsourcing.NewEventRepository(es)
 	eventsourcing.ResetRegsiter()
 
 	// We do not register the Person aggregate with the Born event attached
@@ -358,8 +342,7 @@ func TestStrict(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	p := eventsourcing.NewProjectionRepository(er)
-	proj := p.Projection(es.All(0, 1), func(event eventsourcing.Event) error {
+	proj := eventsourcing.NewProjection(es.All(0, 1), func(event eventsourcing.Event) error {
 		return nil
 	})
 
@@ -372,8 +355,7 @@ func TestStrict(t *testing.T) {
 func TestRace(t *testing.T) {
 	// setup
 	es := memory.Create()
-	er := eventsourcing.NewEventRepository(es)
-	er.Register(&Person{})
+	eventsourcing.Register(&Person{})
 
 	err := createPersonEvent(es, "kalle", 50)
 	if err != nil {
@@ -388,9 +370,8 @@ func TestRace(t *testing.T) {
 
 	applicationErr := errors.New("an error")
 
-	p := eventsourcing.NewProjectionRepository(er)
-	r1 := p.Projection(es.All(0, 1), callbackF)
-	r2 := p.Projection(es.All(0, 1), func(e eventsourcing.Event) error {
+	r1 := eventsourcing.NewProjection(es.All(0, 1), callbackF)
+	r2 := eventsourcing.NewProjection(es.All(0, 1), func(e eventsourcing.Event) error {
 		time.Sleep(time.Millisecond)
 		if e.GlobalVersion() == 31 {
 			return applicationErr
@@ -398,7 +379,7 @@ func TestRace(t *testing.T) {
 		return nil
 	})
 
-	result, err := p.Race(true, r1, r2)
+	result, err := eventsourcing.Race(true, r1, r2)
 
 	// causing err should be applicationErr
 	if !errors.Is(err, applicationErr) {
@@ -424,8 +405,7 @@ func TestRace(t *testing.T) {
 func TestKeepStartPosition(t *testing.T) {
 	// setup
 	es := memory.Create()
-	er := eventsourcing.NewEventRepository(es)
-	er.Register(&Person{})
+	eventsourcing.Register(&Person{})
 
 	err := createPersonEvent(es, "kalle", 5)
 	if err != nil {
@@ -445,10 +425,9 @@ func TestKeepStartPosition(t *testing.T) {
 		return nil
 	}
 
-	p := eventsourcing.NewProjectionRepository(er)
-	r := p.Projection(es.All(0, 1), callbackF)
+	r := eventsourcing.NewProjection(es.All(0, 1), callbackF)
 
-	_, err = p.Race(true, r)
+	_, err = eventsourcing.Race(true, r)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -458,7 +437,7 @@ func TestKeepStartPosition(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = p.Race(true, r)
+	_, err = eventsourcing.Race(true, r)
 	if err != nil {
 		t.Fatal(err)
 	}

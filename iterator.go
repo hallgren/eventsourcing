@@ -7,7 +7,6 @@ import (
 // Iterator to stream events to reduce memory foot print
 type Iterator struct {
 	iterator core.Iterator
-	er       *EventRepository
 }
 
 // Close the underlaying iterator

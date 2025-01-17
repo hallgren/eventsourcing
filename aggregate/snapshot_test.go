@@ -16,8 +16,7 @@ func setupSnapshotRepository() *aggregate.SnapshotRepository {
 }
 
 func createPerson() *Person {
-	repo := eventsourcing.NewEventRepository(memory.Create())
-	aggrepo := aggregate.NewAggregateRepository(repo, nil)
+	aggrepo := aggregate.NewAggregateRepository(memory.Create(), nil)
 	aggrepo.Register(&Person{})
 	person, err := CreatePerson("kalle")
 	if err != nil {
@@ -102,8 +101,7 @@ type Event struct{}
 type Event2 struct{}
 
 func New() *snapshot {
-	repo := eventsourcing.NewEventRepository(memory.Create())
-	aggrepo := aggregate.NewAggregateRepository(repo, nil)
+	aggrepo := aggregate.NewAggregateRepository(memory.Create(), nil)
 	aggrepo.Register(&snapshot{})
 	s := snapshot{}
 	s.repo = aggrepo

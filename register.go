@@ -13,13 +13,13 @@ type agg interface {
 type registerFunc = func() interface{}
 type RegisterFunc = func(events ...interface{})
 
-type Register struct {
+type EventRegister struct {
 	aggregateEvents map[string]registerFunc
 	aggregates      map[string]struct{}
 }
 
-func NewRegister() *Register {
-	return &Register{
+func NewRegister() *EventRegister {
+	return &EventRegister{
 		aggregateEvents: make(map[string]registerFunc),
 		aggregates:      make(map[string]struct{}),
 	}
@@ -27,19 +27,19 @@ func NewRegister() *Register {
 
 // EventRegistered return the func to generate the correct event data type and true if it exists
 // otherwise false.
-func (r *Register) EventRegistered(event core.Event) (registerFunc, bool) {
+func (r *EventRegister) EventRegistered(event core.Event) (registerFunc, bool) {
 	d, ok := r.aggregateEvents[event.AggregateType+"_"+event.Reason]
 	return d, ok
 }
 
 // Register store the aggregate and calls the aggregate method Register to register the aggregate events.
-func (r *Register) Register(a agg) {
+func (r *EventRegister) Register(a agg) {
 	typ := reflect.TypeOf(a).Elem().Name()
 	fu := r.registerAggregate(typ)
 	a.Register(fu)
 }
 
-func (r *Register) registerAggregate(aggregateType string) RegisterFunc {
+func (r *EventRegister) registerAggregate(aggregateType string) RegisterFunc {
 	r.aggregates[aggregateType] = struct{}{}
 
 	// fe is a helper function to make the event type registration simpler
