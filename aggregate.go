@@ -2,6 +2,7 @@ package eventsourcing
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
 	"github.com/hallgren/eventsourcing/core"
@@ -22,16 +23,16 @@ func Get(ctx context.Context, es core.EventStore, id string, a aggregate) error 
 
 	root := a.root()
 
-	iterator, err := GetEvents(ctx, es, id, aggregateType(a), root.Version())
+	iterator, err := getEvents(ctx, es, id, aggregateType(a), root.Version())
 	if err != nil {
 		return err
 	}
-	for iterator.Next() {
+	for iterator.next() {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			event, err := iterator.Value()
+			event, err := iterator.value()
 			if err != nil {
 				return err
 			}
@@ -62,7 +63,11 @@ func Save(es core.EventStore, a aggregate) error {
 		return nil
 	}
 
-	globalVersion, err := SaveEvents(es, root.Events())
+	if !globalRegister.aggregateRegistered(a) {
+		return fmt.Errorf("%s %w", aggregateType(a), ErrAggregateNotRegistered)
+	}
+
+	globalVersion, err := saveEvents(es, root.Events())
 	if err != nil {
 		return err
 	}
@@ -79,5 +84,5 @@ func Save(es core.EventStore, a aggregate) error {
 
 // Register registers the aggregate and its events
 func Register(a aggregate) {
-	register.Register(a)
+	globalRegister.register(a)
 }

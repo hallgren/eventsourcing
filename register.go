@@ -6,40 +6,43 @@ import (
 	"github.com/hallgren/eventsourcing/core"
 )
 
-type agg interface {
-	Register(RegisterFunc)
-}
-
 type registerFunc = func() interface{}
 type RegisterFunc = func(events ...interface{})
 
-type EventRegister struct {
+type register struct {
 	aggregateEvents map[string]registerFunc
 	aggregates      map[string]struct{}
 }
 
-func NewRegister() *EventRegister {
-	return &EventRegister{
+func newRegister() *register {
+	return &register{
 		aggregateEvents: make(map[string]registerFunc),
 		aggregates:      make(map[string]struct{}),
 	}
 }
 
-// EventRegistered return the func to generate the correct event data type and true if it exists
+// aggregateRegistered return true if the aggregate is registered
+func (r *register) aggregateRegistered(a aggregate) bool {
+	typ := aggregateType(a)
+	_, ok := r.aggregates[typ]
+	return ok
+}
+
+// eventRegistered return the func to generate the correct event data type and true if it exists
 // otherwise false.
-func (r *EventRegister) EventRegistered(event core.Event) (registerFunc, bool) {
+func (r *register) eventRegistered(event core.Event) (registerFunc, bool) {
 	d, ok := r.aggregateEvents[event.AggregateType+"_"+event.Reason]
 	return d, ok
 }
 
-// Register store the aggregate and calls the aggregate method Register to register the aggregate events.
-func (r *EventRegister) Register(a agg) {
+// register store the aggregate and calls the aggregate method register to register the aggregate events.
+func (r *register) register(a aggregate) {
 	typ := reflect.TypeOf(a).Elem().Name()
 	fu := r.registerAggregate(typ)
 	a.Register(fu)
 }
 
-func (r *EventRegister) registerAggregate(aggregateType string) RegisterFunc {
+func (r *register) registerAggregate(aggregateType string) RegisterFunc {
 	r.aggregates[aggregateType] = struct{}{}
 
 	// fe is a helper function to make the event type registration simpler

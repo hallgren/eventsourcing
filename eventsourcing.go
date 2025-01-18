@@ -8,11 +8,6 @@ import (
 	"github.com/hallgren/eventsourcing/core"
 )
 
-type Encoder interface {
-	Serialize(v interface{}) ([]byte, error)
-	Deserialize(data []byte, v interface{}) error
-}
-
 var (
 	// ErrAggregateNotFound returns if events not found for aggregate or aggregate was not based on snapshot from the outside
 	ErrAggregateNotFound = errors.New("aggregate not found")
@@ -27,9 +22,9 @@ var (
 	ErrConcurrency = errors.New("concurrency error")
 )
 
-// EventRepository is the returned instance from the factory function
-type EventRepository struct {
-	eventStore core.EventStore
+type Encoder interface {
+	Serialize(v interface{}) ([]byte, error)
+	Deserialize(data []byte, v interface{}) error
 }
 
 // global encoder used for events
@@ -40,30 +35,30 @@ func SetEncoder(e Encoder) {
 	encoder = e
 }
 
-// global event register
-var register = NewRegister()
+// global event globalRegister
+var globalRegister = newRegister()
 
 // ResetRegsiter reset the event regsiter
 func ResetRegsiter() {
-	register = NewRegister()
+	globalRegister = newRegister()
 }
 
 var publisherFunc = func(events []Event) {}
 
-// GetEvents return event iterator based on aggregate inputs from the event store
-func GetEvents(ctx context.Context, eventStore core.EventStore, id, aggregateType string, fromVersion Version) (*Iterator, error) {
+// getEvents return event iterator based on aggregate inputs from the event store
+func getEvents(ctx context.Context, eventStore core.EventStore, id, aggregateType string, fromVersion Version) (*iterator, error) {
 	// fetch events after the current version of the aggregate that could be fetched from the snapshot store
 	eventIterator, err := eventStore.Get(ctx, id, aggregateType, core.Version(fromVersion))
 	if err != nil {
 		return nil, err
 	}
-	return &Iterator{
+	return &iterator{
 		iterator: eventIterator,
 	}, nil
 }
 
 // Save events to the event store
-func SaveEvents(eventStore core.EventStore, events []Event) (Version, error) {
+func saveEvents(eventStore core.EventStore, events []Event) (Version, error) {
 	var esEvents = make([]core.Event, 0, len(events))
 
 	for _, event := range events {
@@ -85,9 +80,9 @@ func SaveEvents(eventStore core.EventStore, events []Event) (Version, error) {
 			Metadata:      metadata,
 			Reason:        event.Reason(),
 		}
-		_, ok := register.EventRegistered(esEvent)
+		_, ok := globalRegister.eventRegistered(esEvent)
 		if !ok {
-			return 0, ErrEventNotRegistered
+			return 0, fmt.Errorf("%s %w", esEvent.Reason, ErrEventNotRegistered)
 		}
 		esEvents = append(esEvents, esEvent)
 	}

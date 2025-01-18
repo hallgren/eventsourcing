@@ -100,6 +100,5 @@ func SaveSnapshot(ss core.SnapshotStore, a aggregate) error {
 		State:         state,
 	}
 
-	err = ss.Save(snapshot)
-	return err
+	return ss.Save(snapshot)
 }
