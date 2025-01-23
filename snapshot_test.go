@@ -100,14 +100,14 @@ func New() *snapshot {
 	es := memory.Create()
 	eventsourcing.Register(&snapshot{})
 	s := snapshot{}
-	s.TrackChange(&s, &Event{})
+	eventsourcing.TrackChange(&s, &Event{})
 	s.repo = es
 	eventsourcing.Save(es, &s)
 	return &s
 }
 
 func (s *snapshot) Command() {
-	s.TrackChange(s, &Event2{})
+	eventsourcing.TrackChange(s, &Event2{})
 	eventsourcing.Save(s.repo, s)
 }
 

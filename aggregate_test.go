@@ -27,7 +27,7 @@ func TestSaveAndGet(t *testing.T) {
 	}
 
 	twin := Person{}
-	err = eventsourcing.Get(context.Background(), es, person.ID(), &twin)
+	err = eventsourcing.Load(context.Background(), es, person.ID(), &twin)
 	if err != nil {
 		t.Fatalf("could not get aggregate err: %v", err)
 	}
@@ -48,7 +48,7 @@ func TestGetNoneExistingAggregate(t *testing.T) {
 	eventsourcing.Register(&Person{})
 
 	p := Person{}
-	err := eventsourcing.Get(context.Background(), es, "none_existing", &p)
+	err := eventsourcing.Load(context.Background(), es, "none_existing", &p)
 	if err != eventsourcing.ErrAggregateNotFound {
 		t.Fatal("could not get aggregate")
 	}

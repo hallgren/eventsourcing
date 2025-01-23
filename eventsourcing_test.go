@@ -27,7 +27,7 @@ func TestGetWithContextCancel(t *testing.T) {
 
 	// cancel the context
 	cancel()
-	err = eventsourcing.Get(ctx, es, person.ID(), person)
+	err = eventsourcing.Load(ctx, es, person.ID(), person)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("expected error context.Canceled but was %v", err)
 	}
@@ -99,11 +99,11 @@ func TestConcurrentRead(t *testing.T) {
 		wg := sync.WaitGroup{}
 		wg.Add(2)
 		go func() {
-			eventsourcing.Get(context.Background(), es, person.ID(), &p1)
+			eventsourcing.Load(context.Background(), es, person.ID(), &p1)
 			wg.Done()
 		}()
 		go func() {
-			eventsourcing.Get(context.Background(), es, person2.ID(), &p2)
+			eventsourcing.Load(context.Background(), es, person2.ID(), &p2)
 			wg.Done()
 		}()
 		wg.Wait()

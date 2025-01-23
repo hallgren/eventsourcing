@@ -32,7 +32,7 @@ func CreatePerson(name string) (*Person, error) {
 		return nil, errors.New("name can't be blank")
 	}
 	person := Person{}
-	person.TrackChange(&person, &Born{Name: name})
+	eventsourcing.TrackChange(&person, &Born{Name: name})
 	return &person, nil
 }
 
@@ -49,7 +49,7 @@ func CreatePersonWithID(id, name string) (*Person, error) {
 	} else if err != nil {
 		return nil, err
 	}
-	person.TrackChange(&person, &Born{Name: name})
+	eventsourcing.TrackChange(&person, &Born{Name: name})
 	return &person, nil
 }
 
@@ -57,7 +57,7 @@ func CreatePersonWithID(id, name string) (*Person, error) {
 func (person *Person) GrowOlder() {
 	metaData := make(map[string]interface{})
 	metaData["foo"] = "bar"
-	person.TrackChangeWithMetadata(person, &AgedOneYear{}, metaData)
+	eventsourcing.TrackChangeWithMetadata(person, &AgedOneYear{}, metaData)
 }
 
 // Register bind the events to the repository when the aggregate is registered.

@@ -15,8 +15,8 @@ type aggregate interface {
 	Register(RegisterFunc)
 }
 
-// Get returns the aggregate based on its identifier
-func Get(ctx context.Context, es core.EventStore, id string, a aggregate) error {
+// Load returns the aggregate based on its identifier based on its events
+func Load(ctx context.Context, es core.EventStore, id string, a aggregate) error {
 	if reflect.ValueOf(a).Kind() != reflect.Ptr {
 		return ErrAggregateNeedsToBeAPointer
 	}
@@ -36,7 +36,7 @@ func Get(ctx context.Context, es core.EventStore, id string, a aggregate) error 
 			if err != nil {
 				return err
 			}
-			root.BuildFromHistory(a, []Event{event})
+			buildFromHistory(a, []Event{event})
 		}
 	}
 	if root.Version() == 0 {
@@ -45,13 +45,13 @@ func Get(ctx context.Context, es core.EventStore, id string, a aggregate) error 
 	return nil
 }
 
-// GetWithSnapshot fetch the aggregate by first get its snapshot and later append events that was saved after the snapshot was stored
-func GetWithSnapshot(ctx context.Context, es core.EventStore, ss core.SnapshotStore, id string, a aggregate) error {
+// LoadFromSnapshot fetch the aggregate by first get its snapshot and later append events after the snapshot was stored
+func LoadFromSnapshot(ctx context.Context, es core.EventStore, ss core.SnapshotStore, id string, a aggregate) error {
 	err := GetSnapshot(ctx, ss, id, a)
 	if err != nil {
 		return err
 	}
-	return Get(ctx, es, id, a)
+	return Load(ctx, es, id, a)
 }
 
 // Save stores the aggregate events and update the snapshot if snapshotstore is present
