@@ -6,17 +6,18 @@ import (
 
 	"github.com/hallgren/eventsourcing"
 	"github.com/hallgren/eventsourcing/eventstore/memory"
+	ss "github.com/hallgren/eventsourcing/snapshotstore/memory"
 )
 
-func TestSaveAndGet(t *testing.T) {
+func TestSaveAndLoadAggregate(t *testing.T) {
 	es := memory.Create()
-	eventsourcing.Register(&Person{})
+	eventsourcing.AggregateRegister(&Person{})
 
 	person, err := CreatePerson("kalle")
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = eventsourcing.Save(es, person)
+	err = eventsourcing.AggregateSave(es, person)
 	if err != nil {
 		t.Fatalf("could not save aggregate, err: %v", err)
 	}
@@ -27,7 +28,7 @@ func TestSaveAndGet(t *testing.T) {
 	}
 
 	twin := Person{}
-	err = eventsourcing.Load(context.Background(), es, person.ID(), &twin)
+	err = eventsourcing.AggregateLoad(context.Background(), es, person.ID(), &twin)
 	if err != nil {
 		t.Fatalf("could not get aggregate err: %v", err)
 	}
@@ -43,12 +44,47 @@ func TestSaveAndGet(t *testing.T) {
 	}
 }
 
-func TestGetNoneExistingAggregate(t *testing.T) {
+func TestLoadAggregateFromSnapshot(t *testing.T) {
 	es := memory.Create()
-	eventsourcing.Register(&Person{})
+	ss := ss.Create()
+	eventsourcing.AggregateRegister(&Person{})
+
+	person, err := CreatePerson("kalle")
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = eventsourcing.AggregateSave(es, person)
+	if err != nil {
+		t.Fatalf("could not save aggregate, err: %v", err)
+	}
+
+	// store snapshot
+	err = eventsourcing.SnapshotSave(ss, person)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// add one more event to the person aggregate
+	person.GrowOlder()
+	err = eventsourcing.AggregateSave(es, person)
+
+	// load person to person2 from snaphost and events
+	person2 := &Person{}
+	err = eventsourcing.AggregateLoadFromSnapshot(context.Background(), es, ss, person.ID(), person2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if person.Age != person2.Age {
+		t.Fatalf("expected same age on person(%d) and person2(%d)", person.Age, person2.Age)
+	}
+}
+
+func TestLoadNoneExistingAggregate(t *testing.T) {
+	es := memory.Create()
+	eventsourcing.AggregateRegister(&Person{})
 
 	p := Person{}
-	err := eventsourcing.Load(context.Background(), es, "none_existing", &p)
+	err := eventsourcing.AggregateLoad(context.Background(), es, "none_existing", &p)
 	if err != eventsourcing.ErrAggregateNotFound {
 		t.Fatal("could not get aggregate")
 	}

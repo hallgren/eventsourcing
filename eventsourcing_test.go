@@ -12,13 +12,13 @@ import (
 
 func TestGetWithContextCancel(t *testing.T) {
 	es := memory.Create()
-	eventsourcing.Register(&Person{})
+	eventsourcing.AggregateRegister(&Person{})
 
 	person, err := CreatePerson("kalle")
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = eventsourcing.Save(es, person)
+	err = eventsourcing.AggregateSave(es, person)
 	if err != nil {
 		t.Fatal("could not save aggregate")
 	}
@@ -27,7 +27,7 @@ func TestGetWithContextCancel(t *testing.T) {
 
 	// cancel the context
 	cancel()
-	err = eventsourcing.Load(ctx, es, person.ID(), person)
+	err = eventsourcing.AggregateLoad(ctx, es, person.ID(), person)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("expected error context.Canceled but was %v", err)
 	}
@@ -41,7 +41,7 @@ func TestSaveWhenAggregateNotRegistered(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = eventsourcing.Save(es, person)
+	err = eventsourcing.AggregateSave(es, person)
 	if !errors.Is(err, eventsourcing.ErrAggregateNotRegistered) {
 		t.Fatalf("could save aggregate that was not registered, err: %v", err)
 	}
@@ -49,20 +49,20 @@ func TestSaveWhenAggregateNotRegistered(t *testing.T) {
 
 func TestMultipleSave(t *testing.T) {
 	es := memory.Create()
-	eventsourcing.Register(&Person{})
+	eventsourcing.AggregateRegister(&Person{})
 
 	person, err := CreatePerson("kalle")
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = eventsourcing.Save(es, person)
+	err = eventsourcing.AggregateSave(es, person)
 	if err != nil {
 		t.Fatalf("could not save aggregate, err: %v", err)
 	}
 
 	version := person.Version()
 
-	err = eventsourcing.Save(es, person)
+	err = eventsourcing.AggregateSave(es, person)
 	if err != nil {
 		t.Fatalf("save should be a nop, err: %v", err)
 	}
@@ -74,13 +74,13 @@ func TestMultipleSave(t *testing.T) {
 
 func TestConcurrentRead(t *testing.T) {
 	es := memory.Create()
-	eventsourcing.Register(&Person{})
+	eventsourcing.AggregateRegister(&Person{})
 
 	person, err := CreatePerson("kalle")
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = eventsourcing.Save(es, person)
+	err = eventsourcing.AggregateSave(es, person)
 	if err != nil {
 		t.Fatal("could not save aggregate")
 	}
@@ -88,7 +88,7 @@ func TestConcurrentRead(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = eventsourcing.Save(es, person2)
+	err = eventsourcing.AggregateSave(es, person2)
 	if err != nil {
 		t.Fatal("could not save aggregate")
 	}
@@ -99,11 +99,11 @@ func TestConcurrentRead(t *testing.T) {
 		wg := sync.WaitGroup{}
 		wg.Add(2)
 		go func() {
-			eventsourcing.Load(context.Background(), es, person.ID(), &p1)
+			eventsourcing.AggregateLoad(context.Background(), es, person.ID(), &p1)
 			wg.Done()
 		}()
 		go func() {
-			eventsourcing.Load(context.Background(), es, person2.ID(), &p2)
+			eventsourcing.AggregateLoad(context.Background(), es, person2.ID(), &p2)
 			wg.Done()
 		}()
 		wg.Wait()

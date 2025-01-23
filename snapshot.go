@@ -27,9 +27,9 @@ func SetEncoderSnapshot(e Encoder) {
 	encoder = e
 }
 
-// GetSnapshot returns aggregate that is based on the snapshot data
+// SnapshotLoad build the aggregate based on its snapshot data not including its events.
 // Beware that it could be more events that has happened after the snapshot was taken
-func GetSnapshot(ctx context.Context, ss core.SnapshotStore, id string, a aggregate) error {
+func SnapshotLoad(ctx context.Context, ss core.SnapshotStore, id string, a aggregate) error {
 	if reflect.ValueOf(a).Kind() != reflect.Ptr {
 		return ErrAggregateNeedsToBeAPointer
 	}
@@ -69,8 +69,8 @@ func getSnapshot(ctx context.Context, ss core.SnapshotStore, id string, a aggreg
 	return nil
 }
 
-// SaveSnapshot will only store the snapshot and will return an error if there are events that are not stored
-func SaveSnapshot(ss core.SnapshotStore, a aggregate) error {
+// SnapshotSave will only store the snapshot and will return an error if there are events that are not stored
+func SnapshotSave(ss core.SnapshotStore, a aggregate) error {
 	root := a.root()
 	if len(root.Events()) > 0 {
 		return ErrUnsavedEvents
