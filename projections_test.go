@@ -12,6 +12,7 @@ import (
 	"github.com/hallgren/eventsourcing/aggregate"
 	"github.com/hallgren/eventsourcing/core"
 	"github.com/hallgren/eventsourcing/eventstore/memory"
+	"github.com/hallgren/eventsourcing/internal"
 )
 
 // Person aggregate
@@ -53,7 +54,7 @@ func (person *Person) Transition(event eventsourcing.Event) {
 }
 
 // Register bind the events to the repository when the aggregate is registered.
-func (person *Person) Register(f eventsourcing.RegisterFunc) {
+func (person *Person) Register(f aggregate.RegisterFunc) {
 	f(&Born{}, &AgedOneYear{})
 }
 
@@ -385,7 +386,7 @@ func TestErrorFromCallback(t *testing.T) {
 func TestStrict(t *testing.T) {
 	// setup
 	es := memory.Create()
-	eventsourcing.ResetRegsiter()
+	internal.ResetRegister()
 
 	// We do not register the Person aggregate with the Born event attached
 	err := createPersonEvent(es, "kalle", 1)

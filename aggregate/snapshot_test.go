@@ -124,7 +124,7 @@ func (s *snapshot) Transition(e eventsourcing.Event) {
 }
 
 // Register bind the events to the repository when the aggregate is registered.
-func (s *snapshot) Register(f eventsourcing.RegisterFunc) {
+func (s *snapshot) Register(f aggregate.RegisterFunc) {
 	f(&Event{}, &Event2{})
 }
 

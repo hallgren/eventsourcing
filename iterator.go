@@ -2,6 +2,7 @@ package eventsourcing
 
 import (
 	"github.com/hallgren/eventsourcing/core"
+	"github.com/hallgren/eventsourcing/internal"
 )
 
 // Iterator to stream events to reduce memory foot print
@@ -24,7 +25,7 @@ func (i *Iterator) Value() (Event, error) {
 		return Event{}, err
 	}
 	// apply the event to the aggregate
-	f, found := GlobalRegister.eventRegistered(event)
+	f, found := internal.GlobalRegister.EventRegistered(event)
 	if !found {
 		return Event{}, ErrEventNotRegistered
 	}

@@ -14,8 +14,8 @@ type AnAggregate struct {
 	aggregate.Root
 }
 
-func (a *AnAggregate) Transition(e eventsourcing.Event)      {}
-func (a *AnAggregate) Register(e eventsourcing.RegisterFunc) {}
+func (a *AnAggregate) Transition(e eventsourcing.Event)  {}
+func (a *AnAggregate) Register(e aggregate.RegisterFunc) {}
 
 type AnEvent struct {
 	Name string
@@ -25,8 +25,8 @@ type AnotherAggregate struct {
 	aggregate.Root
 }
 
-func (a *AnotherAggregate) Transition(e eventsourcing.Event)      {}
-func (a *AnotherAggregate) Register(e eventsourcing.RegisterFunc) {}
+func (a *AnotherAggregate) Transition(e eventsourcing.Event)  {}
+func (a *AnotherAggregate) Register(e aggregate.RegisterFunc) {}
 
 type AnotherEvent struct{}
 

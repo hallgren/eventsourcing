@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/hallgren/eventsourcing/core"
+	"github.com/hallgren/eventsourcing/internal"
 )
 
 var (
@@ -42,14 +43,6 @@ var encoder Encoder = EncoderJSON{}
 // Encoder change the default JSON encoder that serializer/deserializer events
 func SetEncoder(e Encoder) {
 	encoder = e
-}
-
-// global event GlobalRegister
-var GlobalRegister = newRegister()
-
-// ResetRegsiter reset the event regsiter
-func ResetRegsiter() {
-	GlobalRegister = newRegister()
 }
 
 var publisherFunc = func(events []Event) {}
@@ -89,7 +82,7 @@ func SaveEvents(eventStore core.EventStore, events []Event) (Version, error) {
 			Metadata:      metadata,
 			Reason:        event.Reason(),
 		}
-		_, ok := GlobalRegister.eventRegistered(esEvent)
+		_, ok := internal.GlobalRegister.EventRegistered(esEvent)
 		if !ok {
 			return 0, fmt.Errorf("%s %w", esEvent.Reason, ErrEventNotRegistered)
 		}

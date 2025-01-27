@@ -7,13 +7,16 @@ import (
 
 	"github.com/hallgren/eventsourcing"
 	"github.com/hallgren/eventsourcing/core"
+	"github.com/hallgren/eventsourcing/internal"
 )
+
+type RegisterFunc = func(events ...interface{})
 
 // Aggregate interface to use the aggregate root specific methods
 type aggregate interface {
 	root() *Root
 	Transition(event eventsourcing.Event)
-	Register(eventsourcing.RegisterFunc)
+	Register(RegisterFunc)
 }
 
 // Load returns the aggregate based on its events
@@ -65,7 +68,7 @@ func Save(es core.EventStore, a aggregate) error {
 		return nil
 	}
 
-	if !eventsourcing.GlobalRegister.AggregateRegistered(a) {
+	if !internal.GlobalRegister.AggregateRegistered(a) {
 		return fmt.Errorf("%s %w", aggregateType(a), eventsourcing.ErrAggregateNotRegistered)
 	}
 
@@ -86,5 +89,5 @@ func Save(es core.EventStore, a aggregate) error {
 
 // Register registers the aggregate and its events
 func Register(a aggregate) {
-	eventsourcing.GlobalRegister.Register(a)
+	internal.GlobalRegister.Register(a)
 }
