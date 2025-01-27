@@ -9,9 +9,6 @@ import (
 	"github.com/hallgren/eventsourcing/core"
 )
 
-// ErrUnsavedEvents aggregate events must be saved before creating snapshot
-var ErrUnsavedEvents = errors.New("aggregate holds unsaved events")
-
 type SerializeFunc func(v interface{}) ([]byte, error)
 type DeserializeFunc func(data []byte, v interface{}) error
 
@@ -74,7 +71,7 @@ func getSnapshot(ctx context.Context, ss core.SnapshotStore, id string, a aggreg
 func SaveSnapshot(ss core.SnapshotStore, a aggregate) error {
 	root := a.root()
 	if len(root.Events()) > 0 {
-		return ErrUnsavedEvents
+		return eventsourcing.ErrUnsavedEvents
 	}
 
 	state := []byte{}
