@@ -45,7 +45,7 @@ func CreatePersonWithID(id, name string) (*Person, error) {
 
 	person := Person{}
 	err := person.SetID(id)
-	if err == aggregate.ErrAggregateAlreadyExists {
+	if err == eventsourcing.ErrAggregateAlreadyExists {
 		return nil, err
 	} else if err != nil {
 		return nil, err

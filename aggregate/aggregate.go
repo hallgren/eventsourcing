@@ -19,7 +19,7 @@ type aggregate interface {
 // Load returns the aggregate based on its events
 func Load(ctx context.Context, es core.EventStore, id string, a aggregate) error {
 	if reflect.ValueOf(a).Kind() != reflect.Ptr {
-		return ErrAggregateNeedsToBeAPointer
+		return eventsourcing.ErrAggregateNeedsToBeAPointer
 	}
 
 	root := a.root()

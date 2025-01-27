@@ -20,6 +20,11 @@ var (
 
 	// ErrConcurrency when the currently saved version of the aggregate differs from the new events
 	ErrConcurrency = errors.New("concurrency error")
+	// ErrAggregateAlreadyExists returned if the aggregateID is set more than one time
+	ErrAggregateAlreadyExists = errors.New("its not possible to set ID on already existing aggregate")
+
+	// ErrAggregateNeedsToBeAPointer return if aggregate is sent in as value object
+	ErrAggregateNeedsToBeAPointer = errors.New("aggregate needs to be a pointer")
 )
 
 type Encoder interface {

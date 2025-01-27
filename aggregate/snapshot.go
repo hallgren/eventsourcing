@@ -32,7 +32,7 @@ func SetEncoderSnapshot(e eventsourcing.Encoder) {
 // Beware that it could be more events that has happened after the snapshot was taken
 func LoadSnapshot(ctx context.Context, ss core.SnapshotStore, id string, a aggregate) error {
 	if reflect.ValueOf(a).Kind() != reflect.Ptr {
-		return ErrAggregateNeedsToBeAPointer
+		return eventsourcing.ErrAggregateNeedsToBeAPointer
 	}
 	err := getSnapshot(ctx, ss, id, a)
 	if err != nil && errors.Is(err, core.ErrSnapshotNotFound) {

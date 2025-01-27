@@ -1,7 +1,6 @@
 package aggregate
 
 import (
-	"errors"
 	"reflect"
 	"time"
 
@@ -17,15 +16,7 @@ type Root struct {
 	aggregateEvents        []eventsourcing.Event
 }
 
-const (
-	emptyAggregateID = ""
-)
-
-// ErrAggregateAlreadyExists returned if the aggregateID is set more than one time
-var ErrAggregateAlreadyExists = errors.New("its not possible to set ID on already existing aggregate")
-
-// ErrAggregateNeedsToBeAPointer return if aggregate is sent in as value object
-var ErrAggregateNeedsToBeAPointer = errors.New("aggregate needs to be a pointer")
+const emptyAggregateID = ""
 
 // TrackChange is used internally by behaviour methods to apply a state change to
 // the current instance and also track it in order that it can be persisted later.
@@ -94,7 +85,7 @@ func (ar *Root) path() string {
 // SetID opens up the possibility to set manual aggregate ID from the outside
 func (ar *Root) SetID(id string) error {
 	if ar.aggregateID != emptyAggregateID {
-		return ErrAggregateAlreadyExists
+		return eventsourcing.ErrAggregateAlreadyExists
 	}
 	ar.aggregateID = id
 	return nil
