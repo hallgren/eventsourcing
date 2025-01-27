@@ -133,7 +133,7 @@ type snapshotInternal struct {
 	Exported   string
 }
 
-func (s *snapshot) SerializeSnapshot(f aggregate.SerializeFunc) ([]byte, error) {
+func (s *snapshot) SerializeSnapshot(f aggregate.SnapshotMarshal) ([]byte, error) {
 	snap := snapshotInternal{
 		UnExported: s.unexported,
 		Exported:   s.Exported,
@@ -141,7 +141,7 @@ func (s *snapshot) SerializeSnapshot(f aggregate.SerializeFunc) ([]byte, error) 
 	return f(snap)
 }
 
-func (s *snapshot) DeserializeSnapshot(f aggregate.DeserializeFunc, b []byte) error {
+func (s *snapshot) DeserializeSnapshot(f aggregate.SnapshotUnmarshal, b []byte) error {
 	snap := snapshotInternal{}
 	err := f(b, &snap)
 	if err != nil {

@@ -10,14 +10,14 @@ import (
 	"github.com/hallgren/eventsourcing/internal"
 )
 
-type SerializeFunc func(v interface{}) ([]byte, error)
-type DeserializeFunc func(data []byte, v interface{}) error
+type SnapshotMarshal func(v interface{}) ([]byte, error)
+type SnapshotUnmarshal func(data []byte, v interface{}) error
 
 // snapshot interface is used to serialize an aggregate that has properties that are not exported
 type snapshot interface {
 	root() *Root
-	SerializeSnapshot(f SerializeFunc) ([]byte, error)
-	DeserializeSnapshot(f DeserializeFunc, d []byte) error
+	SerializeSnapshot(f SnapshotMarshal) ([]byte, error)
+	DeserializeSnapshot(f SnapshotUnmarshal, d []byte) error
 }
 
 type aggregateSnapshot interface {

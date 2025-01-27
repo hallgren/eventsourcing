@@ -78,10 +78,10 @@ func (person *Person) Transition(event eventsourcing.Event) {
 	}
 }
 
-func (person *Person) SerializeSnapshot(aggregate.SerializeFunc) ([]byte, error) {
+func (person *Person) SerializeSnapshot(aggregate.SnapshotMarshal) ([]byte, error) {
 	return json.Marshal(person)
 }
-func (person *Person) DeserializeSnapshot(f aggregate.DeserializeFunc, d []byte) error {
+func (person *Person) DeserializeSnapshot(f aggregate.SnapshotUnmarshal, d []byte) error {
 	return json.Unmarshal(d, person)
 }
 
