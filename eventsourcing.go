@@ -35,30 +35,30 @@ func SetEncoder(e Encoder) {
 	encoder = e
 }
 
-// global event globalRegister
-var globalRegister = newRegister()
+// global event GlobalRegister
+var GlobalRegister = newRegister()
 
 // ResetRegsiter reset the event regsiter
 func ResetRegsiter() {
-	globalRegister = newRegister()
+	GlobalRegister = newRegister()
 }
 
 var publisherFunc = func(events []Event) {}
 
-// getEvents return event iterator based on aggregate inputs from the event store
-func getEvents(ctx context.Context, eventStore core.EventStore, id, aggregateType string, fromVersion Version) (*iterator, error) {
+// GetEvents return event iterator based on aggregate inputs from the event store
+func GetEvents(ctx context.Context, eventStore core.EventStore, id, aggregateType string, fromVersion Version) (*Iterator, error) {
 	// fetch events after the current version of the aggregate that could be fetched from the snapshot store
 	eventIterator, err := eventStore.Get(ctx, id, aggregateType, core.Version(fromVersion))
 	if err != nil {
 		return nil, err
 	}
-	return &iterator{
+	return &Iterator{
 		iterator: eventIterator,
 	}, nil
 }
 
 // Save events to the event store
-func saveEvents(eventStore core.EventStore, events []Event) (Version, error) {
+func SaveEvents(eventStore core.EventStore, events []Event) (Version, error) {
 	var esEvents = make([]core.Event, 0, len(events))
 
 	for _, event := range events {
@@ -80,7 +80,7 @@ func saveEvents(eventStore core.EventStore, events []Event) (Version, error) {
 			Metadata:      metadata,
 			Reason:        event.Reason(),
 		}
-		_, ok := globalRegister.eventRegistered(esEvent)
+		_, ok := GlobalRegister.eventRegistered(esEvent)
 		if !ok {
 			return 0, fmt.Errorf("%s %w", esEvent.Reason, ErrEventNotRegistered)
 		}

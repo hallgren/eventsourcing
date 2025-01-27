@@ -4,27 +4,27 @@ import (
 	"github.com/hallgren/eventsourcing/core"
 )
 
-// iterator to stream events to reduce memory foot print
-type iterator struct {
+// Iterator to stream events to reduce memory foot print
+type Iterator struct {
 	iterator core.Iterator
 }
 
-// close the underlaying iterator
-func (i *iterator) close() {
+// Close the underlaying iterator
+func (i *Iterator) Close() {
 	i.iterator.Close()
 }
 
-func (i *iterator) next() bool {
+func (i *Iterator) Next() bool {
 	return i.iterator.Next()
 }
 
-func (i *iterator) value() (Event, error) {
+func (i *Iterator) Value() (Event, error) {
 	event, err := i.iterator.Value()
 	if err != nil {
 		return Event{}, err
 	}
 	// apply the event to the aggregate
-	f, found := globalRegister.eventRegistered(event)
+	f, found := GlobalRegister.eventRegistered(event)
 	if !found {
 		return Event{}, ErrEventNotRegistered
 	}

@@ -153,14 +153,14 @@ func (p *Projection) RunOnce() (bool, ProjectionResult) {
 	if err != nil {
 		return false, ProjectionResult{Error: err, Name: p.Name, LastHandledEvent: lastHandledEvent}
 	}
-	iterator := &iterator{
+	iterator := &Iterator{
 		iterator: coreIterator,
 	}
-	defer iterator.close()
+	defer iterator.Close()
 
-	for iterator.next() {
+	for iterator.Next() {
 		ran = true
-		event, err := iterator.value()
+		event, err := iterator.Value()
 		if err != nil {
 			if errors.Is(err, ErrEventNotRegistered) {
 				if p.Strict {

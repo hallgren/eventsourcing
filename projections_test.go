@@ -9,9 +9,60 @@ import (
 	"time"
 
 	"github.com/hallgren/eventsourcing"
+	"github.com/hallgren/eventsourcing/aggregate"
 	"github.com/hallgren/eventsourcing/core"
 	"github.com/hallgren/eventsourcing/eventstore/memory"
 )
+
+// Person aggregate
+type Person struct {
+	aggregate.Root
+	Name string
+	Age  int
+	Dead int
+}
+
+// Born event
+type Born struct {
+	Name string
+}
+
+// AgedOneYear event
+type AgedOneYear struct {
+}
+
+// CreatePerson constructor for the Person
+func CreatePerson(name string) (*Person, error) {
+	if name == "" {
+		return nil, errors.New("name can't be blank")
+	}
+	person := Person{}
+	aggregate.TrackChange(&person, &Born{Name: name})
+	return &person, nil
+}
+
+// Transition the person state dependent on the events
+func (person *Person) Transition(event eventsourcing.Event) {
+	switch e := event.Data().(type) {
+	case *Born:
+		person.Age = 0
+		person.Name = e.Name
+	case *AgedOneYear:
+		person.Age += 1
+	}
+}
+
+// Register bind the events to the repository when the aggregate is registered.
+func (person *Person) Register(f eventsourcing.RegisterFunc) {
+	f(&Born{}, &AgedOneYear{})
+}
+
+// GrowOlder command
+func (person *Person) GrowOlder() {
+	metaData := make(map[string]interface{})
+	metaData["foo"] = "bar"
+	aggregate.TrackChangeWithMetadata(person, &AgedOneYear{}, metaData)
+}
 
 func createPersonEvent(es *memory.Memory, name string, age int) error {
 	person, err := CreatePerson(name)
@@ -46,7 +97,7 @@ func createPersonEvent(es *memory.Memory, name string, age int) error {
 func TestRunOnce(t *testing.T) {
 	// setup
 	es := memory.Create()
-	eventsourcing.AggregateRegister(&Person{})
+	aggregate.AggregateRegister(&Person{})
 
 	projectedName := ""
 
@@ -98,7 +149,7 @@ func TestRunOnce(t *testing.T) {
 
 func TestRun(t *testing.T) {
 	es := memory.Create()
-	eventsourcing.AggregateRegister(&Person{})
+	aggregate.AggregateRegister(&Person{})
 
 	projectedName := ""
 	sourceName := "kalle"
@@ -134,7 +185,7 @@ func TestRun(t *testing.T) {
 func TestRunSameProjectionConcurrently(t *testing.T) {
 	// setup
 	es := memory.Create()
-	eventsourcing.AggregateRegister(&Person{})
+	aggregate.AggregateRegister(&Person{})
 
 	sourceName := "kalle"
 
@@ -171,7 +222,7 @@ func TestRunSameProjectionConcurrently(t *testing.T) {
 func TestTriggerSync(t *testing.T) {
 	// setup
 	es := memory.Create()
-	eventsourcing.AggregateRegister(&Person{})
+	aggregate.AggregateRegister(&Person{})
 
 	projectedName := ""
 	sourceName := "kalle"
@@ -215,7 +266,7 @@ func TestTriggerSync(t *testing.T) {
 func TestTriggerAsync(t *testing.T) {
 	// setup
 	es := memory.Create()
-	eventsourcing.AggregateRegister(&Person{})
+	aggregate.AggregateRegister(&Person{})
 
 	projectedName := ""
 	sourceName := "kalle"
@@ -276,7 +327,7 @@ func TestCloseEmptyGroup(t *testing.T) {
 func TestStartMultipleProjections(t *testing.T) {
 	// setup
 	es := memory.Create()
-	eventsourcing.AggregateRegister(&Person{})
+	aggregate.AggregateRegister(&Person{})
 
 	// callback that handles the events
 	callbackF := func(event eventsourcing.Event) error {
@@ -295,7 +346,7 @@ func TestStartMultipleProjections(t *testing.T) {
 func TestErrorFromCallback(t *testing.T) {
 	// setup
 	es := memory.Create()
-	eventsourcing.AggregateRegister(&Person{})
+	aggregate.AggregateRegister(&Person{})
 
 	err := createPersonEvent(es, "kalle", 1)
 	if err != nil {
@@ -355,7 +406,7 @@ func TestStrict(t *testing.T) {
 func TestRace(t *testing.T) {
 	// setup
 	es := memory.Create()
-	eventsourcing.AggregateRegister(&Person{})
+	aggregate.AggregateRegister(&Person{})
 
 	err := createPersonEvent(es, "kalle", 50)
 	if err != nil {
@@ -405,7 +456,7 @@ func TestRace(t *testing.T) {
 func TestKeepStartPosition(t *testing.T) {
 	// setup
 	es := memory.Create()
-	eventsourcing.AggregateRegister(&Person{})
+	aggregate.AggregateRegister(&Person{})
 
 	err := createPersonEvent(es, "kalle", 5)
 	if err != nil {

@@ -1,18 +1,19 @@
-package eventsourcing
+package aggregate
 
 import (
 	"context"
 	"fmt"
 	"reflect"
 
+	"github.com/hallgren/eventsourcing"
 	"github.com/hallgren/eventsourcing/core"
 )
 
 // Aggregate interface to use the aggregate root specific methods
 type aggregate interface {
 	root() *Root
-	Transition(event Event)
-	Register(RegisterFunc)
+	Transition(event eventsourcing.Event)
+	Register(eventsourcing.RegisterFunc)
 }
 
 // AggregateLoad returns the aggregate based on its events
@@ -23,24 +24,24 @@ func AggregateLoad(ctx context.Context, es core.EventStore, id string, a aggrega
 
 	root := a.root()
 
-	iterator, err := getEvents(ctx, es, id, aggregateType(a), root.Version())
+	iterator, err := eventsourcing.GetEvents(ctx, es, id, aggregateType(a), root.Version())
 	if err != nil {
 		return err
 	}
-	for iterator.next() {
+	for iterator.Next() {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			event, err := iterator.value()
+			event, err := iterator.Value()
 			if err != nil {
 				return err
 			}
-			buildFromHistory(a, []Event{event})
+			buildFromHistory(a, []eventsourcing.Event{event})
 		}
 	}
 	if root.Version() == 0 {
-		return ErrAggregateNotFound
+		return eventsourcing.ErrAggregateNotFound
 	}
 	return nil
 }
@@ -64,11 +65,11 @@ func AggregateSave(es core.EventStore, a aggregate) error {
 		return nil
 	}
 
-	if !globalRegister.aggregateRegistered(a) {
-		return fmt.Errorf("%s %w", aggregateType(a), ErrAggregateNotRegistered)
+	if !eventsourcing.GlobalRegister.AggregateRegistered(a) {
+		return fmt.Errorf("%s %w", aggregateType(a), eventsourcing.ErrAggregateNotRegistered)
 	}
 
-	globalVersion, err := saveEvents(es, root.Events())
+	globalVersion, err := eventsourcing.SaveEvents(es, root.Events())
 	if err != nil {
 		return err
 	}
@@ -78,12 +79,12 @@ func AggregateSave(es core.EventStore, a aggregate) error {
 	// set internal properties and reset the events slice
 	lastEvent := root.aggregateEvents[len(root.aggregateEvents)-1]
 	root.aggregateVersion = lastEvent.Version()
-	root.aggregateEvents = []Event{}
+	root.aggregateEvents = []eventsourcing.Event{}
 
 	return nil
 }
 
 // AggregateRegister registers the aggregate and its events
 func AggregateRegister(a aggregate) {
-	globalRegister.register(a)
+	eventsourcing.GlobalRegister.Register(a)
 }

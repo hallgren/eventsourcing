@@ -14,6 +14,11 @@ type register struct {
 	aggregates      map[string]struct{}
 }
 
+// Aggregate interface to use the aggregate root specific methods
+type aggregate interface {
+	Register(RegisterFunc)
+}
+
 func newRegister() *register {
 	return &register{
 		aggregateEvents: make(map[string]registerFunc),
@@ -22,7 +27,7 @@ func newRegister() *register {
 }
 
 // aggregateRegistered return true if the aggregate is registered
-func (r *register) aggregateRegistered(a aggregate) bool {
+func (r *register) AggregateRegistered(a aggregate) bool {
 	typ := aggregateType(a)
 	_, ok := r.aggregates[typ]
 	return ok
@@ -35,8 +40,8 @@ func (r *register) eventRegistered(event core.Event) (registerFunc, bool) {
 	return d, ok
 }
 
-// register store the aggregate and calls the aggregate method register to register the aggregate events.
-func (r *register) register(a aggregate) {
+// Register store the aggregate and calls the aggregate method Register to Register the aggregate events.
+func (r *register) Register(a aggregate) {
 	typ := reflect.TypeOf(a).Elem().Name()
 	fu := r.registerAggregate(typ)
 	a.Register(fu)
@@ -69,4 +74,8 @@ func eventToFunc(event interface{}) registerFunc {
 		// return a new instance of the event
 		return reflect.New(reflect.TypeOf(event).Elem()).Interface()
 	}
+}
+
+func aggregateType(a aggregate) string {
+	return reflect.TypeOf(a).Elem().Name()
 }

@@ -1,4 +1,4 @@
-package eventsourcing
+package aggregate
 
 import (
 	"crypto/rand"

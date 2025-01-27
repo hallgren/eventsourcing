@@ -1,4 +1,4 @@
-package eventsourcing_test
+package aggregate_test
 
 import (
 	"errors"
@@ -7,11 +7,12 @@ import (
 	"time"
 
 	"github.com/hallgren/eventsourcing"
+	"github.com/hallgren/eventsourcing/aggregate"
 )
 
 // Person aggregate
 type Person struct {
-	eventsourcing.Root
+	aggregate.Root
 	Name string
 	Age  int
 	Dead int
@@ -32,7 +33,7 @@ func CreatePerson(name string) (*Person, error) {
 		return nil, errors.New("name can't be blank")
 	}
 	person := Person{}
-	eventsourcing.TrackChange(&person, &Born{Name: name})
+	aggregate.TrackChange(&person, &Born{Name: name})
 	return &person, nil
 }
 
@@ -44,12 +45,12 @@ func CreatePersonWithID(id, name string) (*Person, error) {
 
 	person := Person{}
 	err := person.SetID(id)
-	if err == eventsourcing.ErrAggregateAlreadyExists {
+	if err == aggregate.ErrAggregateAlreadyExists {
 		return nil, err
 	} else if err != nil {
 		return nil, err
 	}
-	eventsourcing.TrackChange(&person, &Born{Name: name})
+	aggregate.TrackChange(&person, &Born{Name: name})
 	return &person, nil
 }
 
@@ -57,7 +58,7 @@ func CreatePersonWithID(id, name string) (*Person, error) {
 func (person *Person) GrowOlder() {
 	metaData := make(map[string]interface{})
 	metaData["foo"] = "bar"
-	eventsourcing.TrackChangeWithMetadata(person, &AgedOneYear{}, metaData)
+	aggregate.TrackChangeWithMetadata(person, &AgedOneYear{}, metaData)
 }
 
 // Register bind the events to the repository when the aggregate is registered.
@@ -199,7 +200,7 @@ func TestSetIDFunc(t *testing.T) {
 		return fmt.Sprint(counter)
 	}
 
-	eventsourcing.SetIDFunc(f)
+	aggregate.SetIDFunc(f)
 	for i := 1; i < 10; i++ {
 		person, _ := CreatePerson("kalle")
 		if person.ID() != fmt.Sprint(i) {

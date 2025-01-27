@@ -1,10 +1,11 @@
-package eventsourcing
+package aggregate
 
 import (
 	"context"
 	"errors"
 	"reflect"
 
+	"github.com/hallgren/eventsourcing"
 	"github.com/hallgren/eventsourcing/core"
 )
 
@@ -20,11 +21,11 @@ type snapshot interface {
 	DeserializeSnapshot(DeserializeFunc, []byte) error
 }
 
-var encoderSnapshot Encoder = EncoderJSON{}
+var encoderSnapshot eventsourcing.Encoder = eventsourcing.EncoderJSON{}
 
 // SetEncoder sets the snapshot encoder
-func SetEncoderSnapshot(e Encoder) {
-	encoder = e
+func SetEncoderSnapshot(e eventsourcing.Encoder) {
+	encoderSnapshot = e
 }
 
 // SnapshotLoad build the aggregate based on its snapshot data not including its events.
@@ -35,7 +36,7 @@ func SnapshotLoad(ctx context.Context, ss core.SnapshotStore, id string, a aggre
 	}
 	err := getSnapshot(ctx, ss, id, a)
 	if err != nil && errors.Is(err, core.ErrSnapshotNotFound) {
-		return ErrAggregateNotFound
+		return eventsourcing.ErrAggregateNotFound
 	}
 	return err
 }
@@ -49,12 +50,12 @@ func getSnapshot(ctx context.Context, ss core.SnapshotStore, id string, a aggreg
 	// Does the aggregate have specific snapshot handling
 	sa, ok := a.(snapshot)
 	if ok {
-		err = sa.DeserializeSnapshot(encoder.Deserialize, s.State)
+		err = sa.DeserializeSnapshot(encoderSnapshot.Deserialize, s.State)
 		if err != nil {
 			return err
 		}
 	} else {
-		err = encoder.Deserialize(s.State, a)
+		err = encoderSnapshot.Deserialize(s.State, a)
 		if err != nil {
 			return err
 		}
@@ -62,8 +63,8 @@ func getSnapshot(ctx context.Context, ss core.SnapshotStore, id string, a aggreg
 
 	// set the internal aggregate properties
 	root := a.root()
-	root.aggregateGlobalVersion = Version(s.GlobalVersion)
-	root.aggregateVersion = Version(s.Version)
+	root.aggregateGlobalVersion = eventsourcing.Version(s.GlobalVersion)
+	root.aggregateVersion = eventsourcing.Version(s.Version)
 	root.aggregateID = s.ID
 
 	return nil
@@ -81,12 +82,12 @@ func SnapshotSave(ss core.SnapshotStore, a aggregate) error {
 	// Does the aggregate have specific snapshot handling
 	sa, ok := a.(snapshot)
 	if ok {
-		state, err = sa.SerializeSnapshot(encoder.Serialize)
+		state, err = sa.SerializeSnapshot(encoderSnapshot.Serialize)
 		if err != nil {
 			return err
 		}
 	} else {
-		state, err = encoder.Serialize(a)
+		state, err = encoderSnapshot.Serialize(a)
 		if err != nil {
 			return err
 		}
