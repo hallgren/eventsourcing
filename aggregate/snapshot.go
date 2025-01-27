@@ -7,6 +7,7 @@ import (
 
 	"github.com/hallgren/eventsourcing"
 	"github.com/hallgren/eventsourcing/core"
+	"github.com/hallgren/eventsourcing/internal"
 )
 
 type SerializeFunc func(v interface{}) ([]byte, error)
@@ -22,13 +23,6 @@ type snapshot interface {
 type aggregateSnapshot interface {
 	aggregate
 	snapshot
-}
-
-var encoderSnapshot eventsourcing.Encoder = eventsourcing.EncoderJSON{}
-
-// SetEncoder sets the snapshot encoder
-func SetEncoderSnapshot(e eventsourcing.Encoder) {
-	encoderSnapshot = e
 }
 
 // LoadSnapshot build the aggregate based on its snapshot data not including its events.
@@ -50,7 +44,7 @@ func getSnapshot(ctx context.Context, ss core.SnapshotStore, id string, s snapsh
 		return err
 	}
 
-	err = s.DeserializeSnapshot(encoderSnapshot.Deserialize, snap.State)
+	err = s.DeserializeSnapshot(internal.SnapshotEncoder.Deserialize, snap.State)
 	if err != nil {
 		return err
 	}
@@ -73,7 +67,7 @@ func SaveSnapshot(ss core.SnapshotStore, s snapshot) error {
 
 	state := []byte{}
 	var err error
-	state, err = s.SerializeSnapshot(encoderSnapshot.Serialize)
+	state, err = s.SerializeSnapshot(internal.SnapshotEncoder.Serialize)
 	if err != nil {
 		return err
 	}

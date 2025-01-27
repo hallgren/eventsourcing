@@ -431,7 +431,7 @@ func TestRace(t *testing.T) {
 		return nil
 	})
 
-	result, err := eventsourcing.Race(true, r1, r2)
+	result, err := eventsourcing.ProjectionsRace(true, r1, r2)
 
 	// causing err should be applicationErr
 	if !errors.Is(err, applicationErr) {
@@ -479,7 +479,7 @@ func TestKeepStartPosition(t *testing.T) {
 
 	r := eventsourcing.NewProjection(es.All(0, 1), callbackF)
 
-	_, err = eventsourcing.Race(true, r)
+	_, err = eventsourcing.ProjectionsRace(true, r)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -489,7 +489,7 @@ func TestKeepStartPosition(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = eventsourcing.Race(true, r)
+	_, err = eventsourcing.ProjectionsRace(true, r)
 	if err != nil {
 		t.Fatal(err)
 	}

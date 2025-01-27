@@ -30,13 +30,13 @@ func (i *Iterator) Value() (Event, error) {
 		return Event{}, ErrEventNotRegistered
 	}
 	data := f()
-	err = encoder.Deserialize(event.Data, &data)
+	err = internal.EventEncoder.Deserialize(event.Data, &data)
 	if err != nil {
 		return Event{}, err
 	}
 	metadata := make(map[string]interface{})
 	if event.Metadata != nil {
-		err = encoder.Deserialize(event.Metadata, &metadata)
+		err = internal.EventEncoder.Deserialize(event.Metadata, &metadata)
 		if err != nil {
 			return Event{}, err
 		}

@@ -246,9 +246,9 @@ func (g *ProjectionGroup) Stop() {
 	g.ErrChan = nil
 }
 
-// Race runs the projections to the end of the events streams.
+// ProjectionsRace runs the projections to the end of the events streams.
 // Can be used on a stale event stream with no more events coming in or when you want to know when all projections are done.
-func Race(cancelOnError bool, projections ...*Projection) ([]ProjectionResult, error) {
+func ProjectionsRace(cancelOnError bool, projections ...*Projection) ([]ProjectionResult, error) {
 	var lock sync.Mutex
 	var causingErr error
 

@@ -37,12 +37,14 @@ type Encoder interface {
 	Deserialize(data []byte, v interface{}) error
 }
 
-// global encoder used for events
-var encoder Encoder = EncoderJSON{}
-
 // Encoder change the default JSON encoder that serializer/deserializer events
-func SetEncoder(e Encoder) {
-	encoder = e
+func SetEventEncoder(e Encoder) {
+	internal.EventEncoder = e
+}
+
+// SetSnapshotEncoder sets the snapshot encoder
+func SetSnapshotEncoder(e Encoder) {
+	internal.SnapshotEncoder = e
 }
 
 var publisherFunc = func(events []Event) {}
@@ -64,11 +66,11 @@ func SaveEvents(eventStore core.EventStore, events []Event) (Version, error) {
 	var esEvents = make([]core.Event, 0, len(events))
 
 	for _, event := range events {
-		data, err := encoder.Serialize(event.Data())
+		data, err := internal.EventEncoder.Serialize(event.Data())
 		if err != nil {
 			return 0, err
 		}
-		metadata, err := encoder.Serialize(event.Metadata())
+		metadata, err := internal.EventEncoder.Serialize(event.Metadata())
 		if err != nil {
 			return 0, err
 		}

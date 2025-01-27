@@ -60,7 +60,7 @@ func LoadFromSnapshot(ctx context.Context, es core.EventStore, ss core.SnapshotS
 	return Load(ctx, es, id, as)
 }
 
-// Save stores the aggregate events and update the snapshot if snapshotstore is present
+// Save stores the aggregate events in the supplied event store
 func Save(es core.EventStore, a aggregate) error {
 	root := a.root()
 
