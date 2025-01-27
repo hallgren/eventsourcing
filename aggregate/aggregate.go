@@ -16,8 +16,8 @@ type aggregate interface {
 	Register(eventsourcing.RegisterFunc)
 }
 
-// AggregateLoad returns the aggregate based on its events
-func AggregateLoad(ctx context.Context, es core.EventStore, id string, a aggregate) error {
+// Load returns the aggregate based on its events
+func Load(ctx context.Context, es core.EventStore, id string, a aggregate) error {
 	if reflect.ValueOf(a).Kind() != reflect.Ptr {
 		return ErrAggregateNeedsToBeAPointer
 	}
@@ -46,18 +46,18 @@ func AggregateLoad(ctx context.Context, es core.EventStore, id string, a aggrega
 	return nil
 }
 
-// AggregateLoadFromSnapshot fetch the aggregate by first get its snapshot and later append events after the snapshot was stored
+// LoadFromSnapshot fetch the aggregate by first get its snapshot and later append events after the snapshot was stored
 // This can speed up the load time of aggregates with many events
-func AggregateLoadFromSnapshot(ctx context.Context, es core.EventStore, ss core.SnapshotStore, id string, a aggregate) error {
-	err := SnapshotLoad(ctx, ss, id, a)
+func LoadFromSnapshot(ctx context.Context, es core.EventStore, ss core.SnapshotStore, id string, a aggregate) error {
+	err := LoadSnapshot(ctx, ss, id, a)
 	if err != nil {
 		return err
 	}
-	return AggregateLoad(ctx, es, id, a)
+	return Load(ctx, es, id, a)
 }
 
-// AggregateSave stores the aggregate events and update the snapshot if snapshotstore is present
-func AggregateSave(es core.EventStore, a aggregate) error {
+// Save stores the aggregate events and update the snapshot if snapshotstore is present
+func Save(es core.EventStore, a aggregate) error {
 	root := a.root()
 
 	// return as quick as possible when no events to process
@@ -84,7 +84,7 @@ func AggregateSave(es core.EventStore, a aggregate) error {
 	return nil
 }
 
-// AggregateRegister registers the aggregate and its events
-func AggregateRegister(a aggregate) {
+// Register registers the aggregate and its events
+func Register(a aggregate) {
 	eventsourcing.GlobalRegister.Register(a)
 }

@@ -12,13 +12,13 @@ import (
 
 func TestSaveAndLoadAggregate(t *testing.T) {
 	es := memory.Create()
-	aggregate.AggregateRegister(&Person{})
+	aggregate.Register(&Person{})
 
 	person, err := CreatePerson("kalle")
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = aggregate.AggregateSave(es, person)
+	err = aggregate.Save(es, person)
 	if err != nil {
 		t.Fatalf("could not save aggregate, err: %v", err)
 	}
@@ -29,7 +29,7 @@ func TestSaveAndLoadAggregate(t *testing.T) {
 	}
 
 	twin := Person{}
-	err = aggregate.AggregateLoad(context.Background(), es, person.ID(), &twin)
+	err = aggregate.Load(context.Background(), es, person.ID(), &twin)
 	if err != nil {
 		t.Fatalf("could not get aggregate err: %v", err)
 	}
@@ -48,30 +48,30 @@ func TestSaveAndLoadAggregate(t *testing.T) {
 func TestLoadAggregateFromSnapshot(t *testing.T) {
 	es := memory.Create()
 	ss := ss.Create()
-	aggregate.AggregateRegister(&Person{})
+	aggregate.Register(&Person{})
 
 	person, err := CreatePerson("kalle")
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = aggregate.AggregateSave(es, person)
+	err = aggregate.Save(es, person)
 	if err != nil {
 		t.Fatalf("could not save aggregate, err: %v", err)
 	}
 
 	// store snapshot
-	err = aggregate.SnapshotSave(ss, person)
+	err = aggregate.SaveSnapshot(ss, person)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// add one more event to the person aggregate
 	person.GrowOlder()
-	err = aggregate.AggregateSave(es, person)
+	err = aggregate.Save(es, person)
 
 	// load person to person2 from snaphost and events
 	person2 := &Person{}
-	err = aggregate.AggregateLoadFromSnapshot(context.Background(), es, ss, person.ID(), person2)
+	err = aggregate.LoadFromSnapshot(context.Background(), es, ss, person.ID(), person2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,10 +82,10 @@ func TestLoadAggregateFromSnapshot(t *testing.T) {
 
 func TestLoadNoneExistingAggregate(t *testing.T) {
 	es := memory.Create()
-	aggregate.AggregateRegister(&Person{})
+	aggregate.Register(&Person{})
 
 	p := Person{}
-	err := aggregate.AggregateLoad(context.Background(), es, "none_existing", &p)
+	err := aggregate.Load(context.Background(), es, "none_existing", &p)
 	if err != eventsourcing.ErrAggregateNotFound {
 		t.Fatal("could not get aggregate")
 	}

@@ -97,7 +97,7 @@ func createPersonEvent(es *memory.Memory, name string, age int) error {
 func TestRunOnce(t *testing.T) {
 	// setup
 	es := memory.Create()
-	aggregate.AggregateRegister(&Person{})
+	aggregate.Register(&Person{})
 
 	projectedName := ""
 
@@ -149,7 +149,7 @@ func TestRunOnce(t *testing.T) {
 
 func TestRun(t *testing.T) {
 	es := memory.Create()
-	aggregate.AggregateRegister(&Person{})
+	aggregate.Register(&Person{})
 
 	projectedName := ""
 	sourceName := "kalle"
@@ -185,7 +185,7 @@ func TestRun(t *testing.T) {
 func TestRunSameProjectionConcurrently(t *testing.T) {
 	// setup
 	es := memory.Create()
-	aggregate.AggregateRegister(&Person{})
+	aggregate.Register(&Person{})
 
 	sourceName := "kalle"
 
@@ -222,7 +222,7 @@ func TestRunSameProjectionConcurrently(t *testing.T) {
 func TestTriggerSync(t *testing.T) {
 	// setup
 	es := memory.Create()
-	aggregate.AggregateRegister(&Person{})
+	aggregate.Register(&Person{})
 
 	projectedName := ""
 	sourceName := "kalle"
@@ -266,7 +266,7 @@ func TestTriggerSync(t *testing.T) {
 func TestTriggerAsync(t *testing.T) {
 	// setup
 	es := memory.Create()
-	aggregate.AggregateRegister(&Person{})
+	aggregate.Register(&Person{})
 
 	projectedName := ""
 	sourceName := "kalle"
@@ -327,7 +327,7 @@ func TestCloseEmptyGroup(t *testing.T) {
 func TestStartMultipleProjections(t *testing.T) {
 	// setup
 	es := memory.Create()
-	aggregate.AggregateRegister(&Person{})
+	aggregate.Register(&Person{})
 
 	// callback that handles the events
 	callbackF := func(event eventsourcing.Event) error {
@@ -346,7 +346,7 @@ func TestStartMultipleProjections(t *testing.T) {
 func TestErrorFromCallback(t *testing.T) {
 	// setup
 	es := memory.Create()
-	aggregate.AggregateRegister(&Person{})
+	aggregate.Register(&Person{})
 
 	err := createPersonEvent(es, "kalle", 1)
 	if err != nil {
@@ -406,7 +406,7 @@ func TestStrict(t *testing.T) {
 func TestRace(t *testing.T) {
 	// setup
 	es := memory.Create()
-	aggregate.AggregateRegister(&Person{})
+	aggregate.Register(&Person{})
 
 	err := createPersonEvent(es, "kalle", 50)
 	if err != nil {
@@ -456,7 +456,7 @@ func TestRace(t *testing.T) {
 func TestKeepStartPosition(t *testing.T) {
 	// setup
 	es := memory.Create()
-	aggregate.AggregateRegister(&Person{})
+	aggregate.Register(&Person{})
 
 	err := createPersonEvent(es, "kalle", 5)
 	if err != nil {
