@@ -31,6 +31,7 @@ func Load(ctx context.Context, es core.EventStore, id string, a aggregate) error
 	if err != nil {
 		return err
 	}
+	defer iterator.Close()
 	for iterator.Next() {
 		select {
 		case <-ctx.Done():
