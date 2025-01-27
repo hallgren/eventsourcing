@@ -48,12 +48,12 @@ func Load(ctx context.Context, es core.EventStore, id string, a aggregate) error
 
 // LoadFromSnapshot fetch the aggregate by first get its snapshot and later append events after the snapshot was stored
 // This can speed up the load time of aggregates with many events
-func LoadFromSnapshot(ctx context.Context, es core.EventStore, ss core.SnapshotStore, id string, a aggregate) error {
-	err := LoadSnapshot(ctx, ss, id, a)
+func LoadFromSnapshot(ctx context.Context, es core.EventStore, ss core.SnapshotStore, id string, as aggregateSnapshot) error {
+	err := LoadSnapshot(ctx, ss, id, as)
 	if err != nil {
 		return err
 	}
-	return Load(ctx, es, id, a)
+	return Load(ctx, es, id, as)
 }
 
 // Save stores the aggregate events and update the snapshot if snapshotstore is present

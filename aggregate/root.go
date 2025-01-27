@@ -130,6 +130,6 @@ func (ar *Root) UnsavedEvents() bool {
 	return len(ar.aggregateEvents) > 0
 }
 
-func aggregateType(a aggregate) string {
+func aggregateType(a interface{}) string {
 	return reflect.TypeOf(a).Elem().Name()
 }

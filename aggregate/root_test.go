@@ -1,6 +1,7 @@
 package aggregate_test
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"testing"
@@ -75,6 +76,13 @@ func (person *Person) Transition(event eventsourcing.Event) {
 	case *AgedOneYear:
 		person.Age += 1
 	}
+}
+
+func (person *Person) SerializeSnapshot(aggregate.SerializeFunc) ([]byte, error) {
+	return json.Marshal(person)
+}
+func (person *Person) DeserializeSnapshot(f aggregate.DeserializeFunc, d []byte) error {
+	return json.Unmarshal(d, person)
 }
 
 func TestPersonWithNoEvents(t *testing.T) {
