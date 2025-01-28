@@ -13,7 +13,6 @@ import (
 func TestSaveAndLoadAggregate(t *testing.T) {
 	es := memory.Create()
 	aggregate.Register(&Person{})
-	aggregate.SnapshotUnmarshal
 
 	person, err := CreatePerson("kalle")
 	if err != nil {
