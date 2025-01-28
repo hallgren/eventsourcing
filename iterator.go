@@ -7,20 +7,20 @@ import (
 
 // Iterator to stream events to reduce memory foot print
 type Iterator struct {
-	iterator core.Iterator
+	CoreIterator core.Iterator
 }
 
 // Close the underlaying iterator
 func (i *Iterator) Close() {
-	i.iterator.Close()
+	i.CoreIterator.Close()
 }
 
 func (i *Iterator) Next() bool {
-	return i.iterator.Next()
+	return i.CoreIterator.Next()
 }
 
 func (i *Iterator) Value() (Event, error) {
-	event, err := i.iterator.Value()
+	event, err := i.CoreIterator.Value()
 	if err != nil {
 		return Event{}, err
 	}
@@ -41,5 +41,9 @@ func (i *Iterator) Value() (Event, error) {
 			return Event{}, err
 		}
 	}
-	return NewEvent(event, data, metadata), nil
+	return Event{
+		event:    event,
+		data:     data,
+		metadata: metadata,
+	}, nil
 }

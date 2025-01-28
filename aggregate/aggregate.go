@@ -2,6 +2,7 @@ package aggregate
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 
@@ -27,7 +28,7 @@ func Load(ctx context.Context, es core.EventStore, id string, a aggregate) error
 
 	root := a.root()
 
-	iterator, err := eventsourcing.GetEvents(ctx, es, id, aggregateType(a), root.Version())
+	iterator, err := getEvents(ctx, es, id, aggregateType(a), root.Version())
 	if err != nil {
 		return err
 	}
@@ -73,7 +74,7 @@ func Save(es core.EventStore, a aggregate) error {
 		return fmt.Errorf("%s %w", aggregateType(a), eventsourcing.ErrAggregateNotRegistered)
 	}
 
-	globalVersion, err := eventsourcing.SaveEvents(es, root.Events())
+	globalVersion, err := saveEvents(es, root.Events())
 	if err != nil {
 		return err
 	}
@@ -91,4 +92,59 @@ func Save(es core.EventStore, a aggregate) error {
 // Register registers the aggregate and its events
 func Register(a aggregate) {
 	internal.GlobalRegister.Register(a)
+}
+
+// Save events to the event store
+func saveEvents(eventStore core.EventStore, events []eventsourcing.Event) (eventsourcing.Version, error) {
+	var esEvents = make([]core.Event, 0, len(events))
+
+	for _, event := range events {
+		data, err := internal.EventEncoder.Serialize(event.Data())
+		if err != nil {
+			return 0, err
+		}
+		metadata, err := internal.EventEncoder.Serialize(event.Metadata())
+		if err != nil {
+			return 0, err
+		}
+
+		esEvent := core.Event{
+			AggregateID:   event.AggregateID(),
+			Version:       core.Version(event.Version()),
+			AggregateType: event.AggregateType(),
+			Timestamp:     event.Timestamp(),
+			Data:          data,
+			Metadata:      metadata,
+			Reason:        event.Reason(),
+		}
+		_, ok := internal.GlobalRegister.EventRegistered(esEvent)
+		if !ok {
+			return 0, fmt.Errorf("%s %w", esEvent.Reason, eventsourcing.ErrEventNotRegistered)
+		}
+		esEvents = append(esEvents, esEvent)
+	}
+
+	err := eventStore.Save(esEvents)
+	if err != nil {
+		if errors.Is(err, core.ErrConcurrency) {
+			return 0, eventsourcing.ErrConcurrency
+		}
+		return 0, fmt.Errorf("error from event store: %w", err)
+	}
+	// publish the saved events to realtime subscribers
+	eventsourcing.RealtimeEventStream.Publish(events)
+
+	return eventsourcing.Version(esEvents[len(esEvents)-1].GlobalVersion), nil
+}
+
+// getEvents return event iterator based on aggregate inputs from the event store
+func getEvents(ctx context.Context, eventStore core.EventStore, id, aggregateType string, fromVersion eventsourcing.Version) (*eventsourcing.Iterator, error) {
+	// fetch events after the current version of the aggregate that could be fetched from the snapshot store
+	eventIterator, err := eventStore.Get(ctx, id, aggregateType, core.Version(fromVersion))
+	if err != nil {
+		return nil, err
+	}
+	return &eventsourcing.Iterator{
+		CoreIterator: eventIterator,
+	}, nil
 }

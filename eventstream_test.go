@@ -40,13 +40,14 @@ func eventToByte(i interface{}) []byte {
 
 func TestSubAll(t *testing.T) {
 	var streamEvent *eventsourcing.Event
-	e := eventsourcing.NewEventStream()
+	//e := eventsourcing.NewEventStream()
 	f := func(e eventsourcing.Event) {
 		streamEvent = &e
 	}
-	s := e.All(f)
+	eventsourcing.RealtimeEventStream.Reset()
+	s := eventsourcing.RealtimeEventStream.All(f)
 	defer s.Close()
-	e.Publish([]eventsourcing.Event{event})
+	eventsourcing.RealtimeEventStream.Publish([]eventsourcing.Event{event})
 
 	if streamEvent == nil {
 		t.Fatalf("should have received event")
@@ -58,14 +59,14 @@ func TestSubAll(t *testing.T) {
 
 func TestSubSpecificEvent(t *testing.T) {
 	var streamEvent *eventsourcing.Event
-	e := eventsourcing.NewEventStream()
 	f := func(e eventsourcing.Event) {
 		streamEvent = &e
 	}
+	eventsourcing.RealtimeEventStream.Reset()
 
-	s := e.Event(f, &AnEvent{})
+	s := eventsourcing.RealtimeEventStream.Event(f, &AnEvent{})
 	defer s.Close()
-	e.Publish([]eventsourcing.Event{event})
+	eventsourcing.RealtimeEventStream.Publish([]eventsourcing.Event{event})
 
 	if streamEvent == nil {
 		t.Fatalf("should have received event")
@@ -78,15 +79,15 @@ func TestSubSpecificEvent(t *testing.T) {
 
 func TestSubSpecificEventMultiplePublish(t *testing.T) {
 	var streamEvents []*eventsourcing.Event
-	e := eventsourcing.NewEventStream()
 	f := func(e eventsourcing.Event) {
 		streamEvents = append(streamEvents, &e)
 	}
 
-	s := e.Event(f, &AnEvent{}, &AnotherEvent{})
+	eventsourcing.RealtimeEventStream.Reset()
+	s := eventsourcing.RealtimeEventStream.Event(f, &AnEvent{}, &AnotherEvent{})
 	defer s.Close()
-	e.Publish([]eventsourcing.Event{event})
-	e.Publish([]eventsourcing.Event{otherEvent})
+	eventsourcing.RealtimeEventStream.Publish([]eventsourcing.Event{event})
+	eventsourcing.RealtimeEventStream.Publish([]eventsourcing.Event{otherEvent})
 
 	if streamEvents == nil {
 		t.Fatalf("should have received event")
@@ -118,13 +119,13 @@ func TestSubSpecificEventMultiplePublish(t *testing.T) {
 
 func TestUpdateNoneSubscribedEvent(t *testing.T) {
 	var streamEvent *eventsourcing.Event = nil
-	e := eventsourcing.NewEventStream()
+	eventsourcing.RealtimeEventStream.Reset()
 	f := func(e eventsourcing.Event) {
 		streamEvent = &e
 	}
-	s := e.Event(f, &AnotherEvent{})
+	s := eventsourcing.RealtimeEventStream.Event(f, &AnotherEvent{})
 	defer s.Close()
-	e.Publish([]eventsourcing.Event{event})
+	eventsourcing.RealtimeEventStream.Publish([]eventsourcing.Event{event})
 
 	if streamEvent != nil {
 		t.Fatalf("should not have received event %q", streamEvent)
@@ -137,7 +138,7 @@ func TestManySubscribers(t *testing.T) {
 	streamEvent3 := make([]eventsourcing.Event, 0)
 	streamEvent4 := make([]eventsourcing.Event, 0)
 
-	e := eventsourcing.NewEventStream()
+	eventsourcing.RealtimeEventStream.Reset()
 	f1 := func(e eventsourcing.Event) {
 		streamEvent1 = append(streamEvent1, e)
 	}
@@ -151,16 +152,16 @@ func TestManySubscribers(t *testing.T) {
 		streamEvent4 = append(streamEvent4, e)
 	}
 
-	s := e.Event(f1, &AnotherEvent{})
+	s := eventsourcing.RealtimeEventStream.Event(f1, &AnotherEvent{})
 	defer s.Close()
-	s = e.Event(f2, &AnotherEvent{}, &AnEvent{})
+	s = eventsourcing.RealtimeEventStream.Event(f2, &AnotherEvent{}, &AnEvent{})
 	defer s.Close()
-	s = e.Event(f3, &AnEvent{})
+	s = eventsourcing.RealtimeEventStream.Event(f3, &AnEvent{})
 	defer s.Close()
-	s = e.All(f4)
+	s = eventsourcing.RealtimeEventStream.All(f4)
 	defer s.Close()
 
-	e.Publish([]eventsourcing.Event{event})
+	eventsourcing.RealtimeEventStream.Publish([]eventsourcing.Event{event})
 
 	if len(streamEvent1) != 0 {
 		t.Fatalf("stream1 should not have any events")
@@ -181,8 +182,8 @@ func TestManySubscribers(t *testing.T) {
 
 func TestParallelPublish(t *testing.T) {
 	streamEvent := make([]eventsourcing.Event, 0)
-	e := eventsourcing.NewEventStream()
 
+	eventsourcing.RealtimeEventStream.Reset()
 	// functions to bind to event subscription
 	f1 := func(e eventsourcing.Event) {
 		streamEvent = append(streamEvent, e)
@@ -194,11 +195,11 @@ func TestParallelPublish(t *testing.T) {
 		streamEvent = append(streamEvent, e)
 	}
 
-	s := e.Event(f1, &AnEvent{})
+	s := eventsourcing.RealtimeEventStream.Event(f1, &AnEvent{})
 	defer s.Close()
-	s = e.Event(f2, &AnotherEvent{})
+	s = eventsourcing.RealtimeEventStream.Event(f2, &AnotherEvent{})
 	defer s.Close()
-	s = e.All(f3)
+	s = eventsourcing.RealtimeEventStream.All(f3)
 	defer s.Close()
 
 	wg := sync.WaitGroup{}
@@ -206,11 +207,11 @@ func TestParallelPublish(t *testing.T) {
 	for i := 1; i < 1000; i++ {
 		wg.Add(2)
 		go func() {
-			e.Publish([]eventsourcing.Event{otherEvent, otherEvent})
+			eventsourcing.RealtimeEventStream.Publish([]eventsourcing.Event{otherEvent, otherEvent})
 			wg.Done()
 		}()
 		go func() {
-			e.Publish([]eventsourcing.Event{event, event})
+			eventsourcing.RealtimeEventStream.Publish([]eventsourcing.Event{event, event})
 			wg.Done()
 		}()
 	}
@@ -232,16 +233,16 @@ func TestParallelPublish(t *testing.T) {
 
 func TestClose(t *testing.T) {
 	count := 0
-	e := eventsourcing.NewEventStream()
 	f := func(e eventsourcing.Event) {
 		count++
 	}
-	s1 := e.All(f)
-	s2 := e.Event(f, &AnEvent{})
-	s5 := e.All(f)
+	eventsourcing.RealtimeEventStream.Reset()
+	s1 := eventsourcing.RealtimeEventStream.All(f)
+	s2 := eventsourcing.RealtimeEventStream.Event(f, &AnEvent{})
+	s5 := eventsourcing.RealtimeEventStream.All(f)
 
 	// trigger all 3 subscriptions
-	e.Publish([]eventsourcing.Event{event})
+	eventsourcing.RealtimeEventStream.Publish([]eventsourcing.Event{event})
 	if count != 3 {
 		t.Fatalf("should have received 3 event got %d", count)
 	}
@@ -251,7 +252,7 @@ func TestClose(t *testing.T) {
 	s5.Close()
 
 	// new event should not trigger closed subscriptions
-	e.Publish([]eventsourcing.Event{event})
+	eventsourcing.RealtimeEventStream.Publish([]eventsourcing.Event{event})
 	if count != 3 {
 		t.Fatalf("should not have received event after subscriptions are closed")
 	}
@@ -260,21 +261,21 @@ func TestClose(t *testing.T) {
 func TestName(t *testing.T) {
 	var streamEvent eventsourcing.Event
 	var count int
-	e := eventsourcing.NewEventStream()
 	f := func(e eventsourcing.Event) {
 		count++
 		streamEvent = e
 	}
+	eventsourcing.RealtimeEventStream.Reset()
 	// triggered
-	s := e.Name(f, "AnAggregate", "AnEvent")
+	s := eventsourcing.RealtimeEventStream.Name(f, "AnAggregate", "AnEvent")
 	defer s.Close()
 	// not triggered
-	s2 := e.Name(f, "AnAggregate", "AnEvent2")
+	s2 := eventsourcing.RealtimeEventStream.Name(f, "AnAggregate", "AnEvent2")
 	defer s2.Close()
 	// not triggered
-	s3 := e.Name(f, "AnAggregate2", "AnEvent")
+	s3 := eventsourcing.RealtimeEventStream.Name(f, "AnAggregate2", "AnEvent")
 	defer s3.Close()
-	e.Publish([]eventsourcing.Event{event})
+	eventsourcing.RealtimeEventStream.Publish([]eventsourcing.Event{event})
 
 	if streamEvent.Version() != event.Version() {
 		t.Fatalf("wrong info in event got %q expected %q", streamEvent.Version(), event.Version())
@@ -284,7 +285,7 @@ func TestName(t *testing.T) {
 	}
 
 	streamEvent = eventsourcing.Event{}
-	e.Publish([]eventsourcing.Event{otherEvent})
+	eventsourcing.RealtimeEventStream.Publish([]eventsourcing.Event{otherEvent})
 	if streamEvent.Version() != 0 {
 		t.Fatalf("expected zero value")
 	}
@@ -292,4 +293,11 @@ func TestName(t *testing.T) {
 	if count != 1 {
 		t.Fatalf("expected the event function to be hit once")
 	}
+}
+
+func TestCloseSubAfterReset(t *testing.T) {
+	f := func(e eventsourcing.Event) {}
+	s := eventsourcing.RealtimeEventStream.All(f)
+	eventsourcing.RealtimeEventStream.Reset()
+	s.Close()
 }

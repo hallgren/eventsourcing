@@ -31,16 +31,21 @@ func (s *subscription) Close() {
 	s.close()
 }
 
-// NewEventStream constructor
-func NewEventStream() *EventStream {
-	es := &EventStream{
-		specificEvents: make(map[reflect.Type][]*subscription),
-		all:            make([]*subscription, 0),
-		names:          make(map[string][]*subscription),
-	}
-	// binds the Publish function to the global event publishing function
-	publisherFunc = es.Publish
-	return es
+var RealtimeEventStream *EventStream = &EventStream{
+	specificEvents: make(map[reflect.Type][]*subscription),
+	all:            make([]*subscription, 0),
+	names:          make(map[string][]*subscription),
+}
+
+// Reset clears all subscribers
+func (e *EventStream) Reset() {
+	// the lock prevent other event updates get mixed with this update
+	e.lock.Lock()
+	defer e.lock.Unlock()
+
+	e.specificEvents = make(map[reflect.Type][]*subscription)
+	e.all = make([]*subscription, 0)
+	e.names = make(map[string][]*subscription)
 }
 
 // Publish calls the functions that are subscribing to the event stream

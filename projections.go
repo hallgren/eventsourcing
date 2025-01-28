@@ -154,7 +154,7 @@ func (p *Projection) RunOnce() (bool, ProjectionResult) {
 		return false, ProjectionResult{Error: err, Name: p.Name, LastHandledEvent: lastHandledEvent}
 	}
 	iterator := &Iterator{
-		iterator: coreIterator,
+		CoreIterator: coreIterator,
 	}
 	defer iterator.Close()
 
