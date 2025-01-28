@@ -35,12 +35,12 @@ type Encoder interface {
 	Deserialize(data []byte, v interface{}) error
 }
 
-// Encoder change the default JSON encoder that serializer/deserializer events
+// SetEventEncoder change the default JSON encoder that serialize/deserialize events
 func SetEventEncoder(e Encoder) {
 	internal.EventEncoder = e
 }
 
-// SetSnapshotEncoder sets the snapshot encoder
+// SetSnapshotEncoder change the default JSON encoder that seialize/deserialize snapshots
 func SetSnapshotEncoder(e Encoder) {
 	internal.SnapshotEncoder = e
 }
