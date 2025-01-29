@@ -152,6 +152,7 @@ f := func() string {
 
 aggregate.SetIDFunc(f)
 ```
+
 ## Save/Load Aggregate
 
 To save and load aggregates there are exported functions on the aggregate package. `core.EventStore` is an interface exposing the actual storage system. More on that in later sections.
@@ -229,35 +230,27 @@ type Encoder interface {
 
 Events can be pushed in realtime as they are saved to the repository.
 
-`eventsourcing.RealtimeEventstrem.All(func (e Event)) *subscription` subscribes to all events.
+`eventsourcing.RealtimeEventStream.All(func (e Event)) *subscription` subscribes to all events.
 
-`AggregateID(func (e Event), events ...aggregate) *subscription` events bound to specific aggregate based on type and identity.
+`eventsourcing.RealtimeEventStream.AggregateID(func (e Event), events ...aggregate) *subscription` events bound to specific aggregate based on type and identity.
 This makes it possible to get events pinpointed to one specific aggregate instance.
 
-`Aggregate(func (e Event), aggregates ...aggregate) *subscription` subscribes to events bound to specific aggregate type. 
+`eventsourcing.RealtimeEventStream.Aggregate(func (e Event), aggregates ...aggregate) *subscription` subscribes to events bound to specific aggregate type. 
  
-`Event(func (e Event), events ...interface{}) *subscription` subscribes to specific events. There are no restrictions that the events need
+`eventsourcing.RealtimeEventStream.Event(func (e Event), events ...interface{}) *subscription` subscribes to specific events. There are no restrictions that the events need
 to come from the same aggregate, you can mix and match as you please.
 
-`Name(f func(e Event), aggregate string, events ...string) *subscription` subscribes to events based on aggregate type and event name.
+`eventsourcing.RealtimeEventStream.Name(f func(e Event), aggregate string, events ...string) *subscription` subscribes to events based on aggregate type and event name.
 
-The subscription is realtime and events that are saved before the call to one of the subscribers will not be exposed via the `func(e Event)` function. If the application 
-depends on this functionality make sure to call Subscribe() function on the subscriber before storing events in the repository. 
+The subscription is realtime and events that are saved before the call to one of the subscribers will not be exposed via the `func(e Event)` function. 
 
-The event subscription enables the application to make use of the reactive patterns and to make it more decoupled. Check out the [Reactive Manifesto](https://www.reactivemanifesto.org/) 
-for more detailed information. 
-
-Example on how to set up the event subscription and consume the event `FrequentFlierAccountCreated`
+Example on how to set up the event subscription and consume the events.
 
 ```go
-// Setup a memory based repository
-repo := eventsourcing.NewRepository(memory.Create())
-repo.Register(&FrequentFlierAccountAggregate{})
-
 // subscriber that will trigger on every saved events
-s := repo.Subscribers().All(func(e eventsourcing.Event) {
+s := eventsourcing.RealtimeEventStream.All(func(e eventsourcing.Event) {
     switch e := event.Data().(type) {
-        case *FrequentFlierAccountCreated:
+        case *Born:
             // e now have type info
             fmt.Println(e)
         }
@@ -270,25 +263,23 @@ s.Close()
 
 ## Snapshot
 
-If an aggregate has a lot of events it can take some time fetching it's event and building the aggregate. This can be optimized with the help of a snapshot.
-The snapshot is the state of the aggregate on a specific version. Instead of iterating all aggregate events, only the events after the version is iterated and
-used to build the aggregate. The use of snapshots is optional and is exposed via the snapshot repository.
+If an aggregate has a lot of events it can take some time fetching and building the aggregate. This can be optimized with the help of a snapshot.
+The snapshot is the state of the aggregate on a specific version. Instead of iterating all events, only the events after the version is iterated and
+used to build the aggregate. The use of snapshots is optional and is exposed via the snapshot functions on the aggregate package.
 
-### Snapshot Repository
+### Save/Load Snapshot 
 
-The snapshot repository is used to save and get snapshots. It's only possible to save a snapshot if it has no pending events, meaning that its saved to the aggregate
-repository before saved to the snapshot repository.
-
-```go
-NewSnapshotRepository(snapshotStore core.SnapshotStore) *SnapshotRepository
-```
+It's only possible to save a snapshot if it has no pending events, meaning that the aggregate events is saved before saving the snapshot.
 
 ```go
-// gets the aggregate snapshot based on its identifier
-Get(ctx context.Context, id string, a aggregate) error
+// Saves a snapshot
+aggregate.SaveSnapshot(ss core.SnapshotStore, s snapshot) error
 
-// store the aggregate snapshot
-Save(a aggregate) error
+// Loads the aggregate only from the snapshot state not adding events that were saved after the snapshot was taken
+aggregate.LoadSnapshot(ctx context.Context, ss core.SnapshotStore, id string, s snapshot) error
+
+// Loads the aggregate from the snapshot and also adds events
+aggregate.LoadFromSnapshot(ctx context.Context, es core.EventStore, ss core.SnapshotStore, id string, as aggregateSnapshot) error
 ```
 
 ### Snapshot Store
@@ -338,7 +329,7 @@ type PersonSnapshot struct {
 }
 
 // callback that maps the aggregate to the snapshot struct with the exported property
-func (s *Person) SerializeSnapshot(m aggregate.SerializeFunc) ([]byte, error) {
+func (s *Person) SerializeSnapshot(m aggregate.SnapshotMarshal) ([]byte, error) {
 	snap := PersonSnapshot{
 		Unexported: s.unexported,
 	}
@@ -346,7 +337,7 @@ func (s *Person) SerializeSnapshot(m aggregate.SerializeFunc) ([]byte, error) {
 }
 
 // callback to map the snapshot back to the aggregate
-func (s *Person) DeserializeSnapshot(m aggregate.DeserializeFunc, b []byte) error {
+func (s *Person) DeserializeSnapshot(m aggregate.SnapshotUnmarshal, b []byte) error {
 	snap := PersonSnapshot{}
 	err := m(b, &snap)
 	if err != nil {
@@ -357,24 +348,17 @@ func (s *Person) DeserializeSnapshot(m aggregate.DeserializeFunc, b []byte) erro
 }
 ```
 
+It's possible to change the default json encoder by the `eventsourcing.SetSnapshotEncoder(e Encoder)` function.
+
 ## Projections
 
 Projections is a way to build read-models based on events. A read-model is way to expose data from events in a different form. Where the form is optimized for read-only queries.
 
 If you want more background on projections check out Derek Comartin projections article [Projections in Event Sourcing: Build ANY model you want!](https://codeopinion.com/projections-in-event-sourcing-build-any-model-you-want/) or Martin Fowler's [CQRS](https://martinfowler.com/bliki/CQRS.html).
 
-### Projection Repository
-
-The Projection repository is the central part where projections are created.
-
-```go
-// access via the event repository
-eventRepo := eventsourcing.NewEventRepository(eventstore)
-pr := eventsourcing.NewProjectionsRepository(eventRepo)
-```
 ### Projection
 
-A _projection_ is created from the projection repository via the `Projection()` method. The method takes a `fetchFunc` and a `callbackFunc` and returns a pointer to the projection.
+A _projection_ is created from the `eventsourcing.NewProjection` function. The method takes a `fetchFunc` and a `callbackFunc` and returns a pointer to the projection.
 
 ```go
 p := pr.Projection(f fetchFunc, c callbackFunc)
@@ -395,7 +379,7 @@ type callbackFunc func(e eventsourcing.Event) error
 Example: Creates a projection that fetch all events from an event store and handle them in the callbackF.
 
 ```go
-p := pr.Projection(es.All(0, 1), func(event eventsourcing.Event) error {
+p := eventsourcing.NewProjection(es.All(0, 1), func(event eventsourcing.Event) error {
 	switch e := event.Data().(type) {
 	case *Born:
 		// handle the event
@@ -462,7 +446,7 @@ A projection have a set of properties that can affect it's behaivior.
 A set of projections can run concurrently in a group.
 
 ```go
-g := pr.Group(p1, p2, p3)
+g := eventsourcing.NewProjectionGroup(p1, p2, p3)
 ```
 
 A group is started with `g.Start()` where each projection will run in a separate go routine. Errors from a projection can be retrieved from a error channel `g.ErrChan`.
@@ -471,12 +455,12 @@ The `g.Stop()` method is used to halt all projections in the group and it return
 
 ```go
 // create three projections
-p1 := pr.Projection(es.All(0, 1), callbackF)
-p2 := pr.Projection(es.All(0, 1), callbackF)
-p3 := pr.Projection(es.All(0, 1), callbackF)
+p1 := eventsourcing.NewProjection(es.All(0, 1), callbackF)
+p2 := eventsourcing.NewProjection(es.All(0, 1), callbackF)
+p3 := eventsourcing.NewProjection(es.All(0, 1), callbackF)
 
 // create a group containing the projections
-g := pr.Group(p1, p2, p3)
+g := eventsourcing.NewProjectionGroup(p1, p2, p3)
 
 // Start runs all projections concurrently
 g.Start()
@@ -509,7 +493,7 @@ Compared to a group the race is a one shot operation. Instead of fetching events
 The `Race()` method starts the projections and run them to the end of there event streams. When all projections are finished the method return.
 
 ```go
-Race(cancelOnError bool, projections ...*Projection) ([]ProjectionResult, error)
+eventsourcing.ProjectionsRace(cancelOnError bool, projections ...*Projection) ([]ProjectionResult, error)
 ```
 
 If `cancelOnError` is set to true the method will halt all projections and return if any projection is returning an error.
@@ -520,9 +504,9 @@ Race example:
 
 ```go
 // create two projections
-p1 := pr.Projection(es.All(0, 1), callbackF)
-p2 := pr.Projection(es.All(0, 1), callbackF)
+p1 := eventsourcing.NewProjection(es.All(0, 1), callbackF)
+p2 := eventsourcing.NewProjection(es.All(0, 1), callbackF)
 
 // true make the race return on error in any projection
-result, err := p.Race(true, r1, r2)
+result, err := eventsourcing.ProjectionsRace(true, r1, r2)
 ```
