@@ -11,8 +11,8 @@ This set of modules is a post implementation of [@jen20's](https://github.com/je
 
 It's structured in two main parts:
 
-* [Event Sourcing](https://github.com/hallgren/eventsourcing?tab=readme-ov-file#event-sourcing) - Model and create events (write side).
-* [Projections](https://github.com/hallgren/eventsourcing?tab=readme-ov-file#projections) - Create read-models based on the events (read side).
+* [Aggregate](https://github.com/hallgren/eventsourcing?tab=readme-ov-file#aggregate) - Model and Load/Save aggregates (write side).
+* [Consuming events](https://github.com/hallgren/eventsourcing?tab=readme-ov-file#projections) - Handle events and build read-models (read side).
 
 ## Event Sourcing
 
@@ -32,7 +32,8 @@ type Person struct {
 }
 ```
 
-The aggregate needs to implement the `Transition(event eventsourcing.Event)` and `Register(r eventsourcing.RegisterFunc)` methods to fulfill the aggregate interface. This methods define how events are transformed to build the aggregate state and which events to register into the repository.
+The aggregate needs to implement the `Transition(event eventsourcing.Event)` and `Register(r eventsourcing.RegisterFunc)` methods to fulfill the aggregate interface.
+This methods define how events are transformed to build the aggregate state and which events to register into the repository.
 
 Example of the Transition method on the `Person` aggregate.
 
@@ -79,7 +80,7 @@ type AgedOneYear struct {}
 ```
 
 When an aggregate is first created, an event is needed to initialize the state of the aggregate. No event, no aggregate.
-Example of a constructor that returns the `Person` aggregate and inside it binds an event via the `TrackChange` function.
+Example of a constructor that returns the `Person` aggregate and inside it binds an event via the `aggregate.TrackChange` function.
 It's possible to define rules that the aggregate must uphold before an event is created, in this case the person's name must not be blank.
 
 ```go
@@ -89,7 +90,7 @@ func CreatePerson(name string) (*Person, error) {
 		return nil, errors.New("name can't be blank")
 	}
 	person := Person{}
-	person.TrackChange(&person, &Born{Name: name})
+	aggregate.TrackChange(&person, &Born{Name: name})
 	return &person, nil
 }
 ```
@@ -99,13 +100,13 @@ When a person is created, more events could be created via methods on the `Perso
 ```go
 // GrowOlder command
 func (person *Person) GrowOlder() {
-	person.TrackChange(person, &AgedOneYear{})
+	aggregate.TrackChange(person, &AgedOneYear{})
 }
 ```
 
-Internally the `TrackChange` methods calls the `Transition` method on the aggregate to transform the aggregate based on the newly created event.
+Internally the `aggregate.TrackChange` function calls the `Transition` method on the aggregate to transform the aggregate based on the newly created event.
 
-To bind metadata to events use the `TrackChangeWithMetadata` method.
+To bind metadata to events use the `aggregate.TrackChangeWithMetadata` function.
   
 The `Event` has the following behaviours..
 
@@ -151,65 +152,26 @@ f := func() string {
 
 aggregate.SetIDFunc(f)
 ```
-## Aggregate Repository
+## Save/Load Aggregate
 
-The aggregate repository save and get aggregates. It uses the event repository to fetch the events and the optional snapshot repository to
-fetch the initial aggregate state (this should only be used to speed up fetching aggregates with large amount of events)
+To save and load aggregates there are exported functions on the aggregate package. `core.EventStore` is an interface exposing the actual storage system. More on that in later sections.
+The `aggregate` interface is automatically applied on the application defined aggregate when `aggregate.Root` is embedded. 
 
 ```go
-aggregateRepo := aggregate.NewAggregateRepository(er *eventsourcing.EventRepository, sr *SnapshotRepository) *AggregateRepository
+// Save stores the aggregate events in the supplied event store
+aggregate.Save(es core.EventStore, a aggregate) error 
+
+// Load returns the aggregate based on its events
+aggregate.Load(ctx context.Context, es core.EventStore, id string, a aggregate) error
 ```
 
-The exposed methods are
+To be able to save and load aggregates they have to be registered and each aggregate has to implement the `Register` method. On top of that the aggregate itself has to be registered via
+the `aggregate.Register` function.
 
 ```go
-// fetches the aggregate based on its identifier
-Get(ctx context.Context, id string, a aggregate) error
-
-// saves the events that are tracked on the aggregate
-Save(a aggregate) error
-
-// register the aggregate and event types
-Register(a aggregate)
-
-// if a snapshot repository is in use the snapshot is saved via a separate method
-SaveSnapshot(a aggregate) error
-```
-
-The reason for storing events and snapshots in separate methods is that a problem in storing a snapshot should not return an error as the events was successfully stored.
-
-An example of a person being saved and fetched from the aggegate repository. The aggregate repository uses the event reposistory to 
-fetched the events for the aggregate.
-
-```go
-eventRepo := NewRepository(eventStore EventStore) *Repository
-aggregateRepo := aggregate.NewAggregateRepository(eventRepo, nil)
-
 // the person aggregate has to be registered in the repository
-aggregateRepo.Register(&Person{})
-
-person := person.CreatePerson("Alice")
-person.GrowOlder()
-aggregateRepo.Save(person)
-twin := Person{}
-aggregateRepo.Get(person.Id, &twin)
+aggregate.Register(&Person{})
 ```
-
-## Event Repository
-
-The event repository is used to save and retrieve aggregate events. The main functions are:
-
-```go
-// saves the events in underlaying event store
-Save(events []Event) error
-
-// retrieves events based on the aggreagte id and type. If the aggregate is based on snapshot the `fromVersion`
-// is larger than 0.
-// Returned is a event iterator that is passed to the aggregate repository that builds the aggregate state from the events.
-AggregateEvents(ctx context.Context, id, aggregateType string, fromVersion Version) (*Iterator, error)
-```
-
-The event repository is in turn using an event store where the events are stored.
 
 ### Event Store
 
@@ -254,20 +216,20 @@ The event store needs to import the `github.com/hallgren/eventsourcing/core` mod
 Before an `eventsourcing.Event` is stored into a event store it has to be tranformed into an `core.Event`. This is done with an encoder that serializes the data properties `Data` and `Metadata` into `[]byte`.
 When a event is fetched the encoder deserialises the `Data` and `Metadata` `[]byte` back into there actual types.
 
-The event repository has a default encoder that uses the `encoding/json` package for serialization/deserialization. It can be replaced by using the `Encoder(e encoder)` method on the event repository and has to follow this interface:
+The default encoder uses the `encoding/json` package for serialization/deserialization. It can be replaced by using the `eventsourcing.SetEventEncoder(e Encoder)` function on the eventsourcing  package, it has to follow this interface:
 
 ```go
-type encoder interface {
+type Encoder interface {
 	Serialize(v interface{}) ([]byte, error)
 	Deserialize(data []byte, v interface{}) error
 }
 ```
 
-### Event Subscription
+### Realtime Event Subscription
 
-The repository expose four possibilities to subscribe to events in realtime as they are saved to the repository.
+Events can be pushed in realtime as they are saved to the repository.
 
-`All(func (e Event)) *subscription` subscribes to all events.
+`eventsourcing.RealtimeEventstrem.All(func (e Event)) *subscription` subscribes to all events.
 
 `AggregateID(func (e Event), events ...aggregate) *subscription` events bound to specific aggregate based on type and identity.
 This makes it possible to get events pinpointed to one specific aggregate instance.
