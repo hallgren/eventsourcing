@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/hallgren/eventsourcing"
+	"github.com/hallgren/eventsourcing/aggregate"
 )
 
 type Status string
@@ -24,7 +25,7 @@ const (
 
 // Order is the aggregate protecting the state
 type Order struct {
-	eventsourcing.AggregateRoot
+	aggregate.Root
 	Status      Status
 	Total       uint
 	Discount    uint
@@ -58,7 +59,7 @@ func (o *Order) Transition(event eventsourcing.Event) {
 
 // Register is a eventsouring helper function that must be defined on
 // the aggregate.
-func (o *Order) Register(r eventsourcing.RegisterFunc) {
+func (o *Order) Register(r aggregate.RegisterFunc) {
 	r(
 		&Created{},
 		&DiscountApplied{},
@@ -101,7 +102,7 @@ func Create(amount uint) (*Order, error) {
 	}
 
 	o := Order{}
-	o.TrackChange(&o, &Created{Total: amount})
+	aggregate.TrackChange(&o, &Created{Total: amount})
 	return &o, nil
 }
 
@@ -125,7 +126,7 @@ func (o *Order) AddDiscount(percentage uint) error {
 	}
 	discountFloat := float64(percentage) / 100.0
 	newTotal := o.Total - uint(float64(o.Total)*discountFloat)
-	o.TrackChange(o, &DiscountApplied{Percentage: percentage, Total: newTotal})
+	aggregate.TrackChange(o, &DiscountApplied{Percentage: percentage, Total: newTotal})
 	return nil
 }
 
@@ -135,7 +136,7 @@ func (o *Order) RemoveDiscount() {
 	if o.Discount == 0 {
 		return
 	}
-	o.TrackChange(o, &DiscountRemoved{})
+	aggregate.TrackChange(o, &DiscountRemoved{})
 	return
 }
 
@@ -149,10 +150,10 @@ func (o *Order) Pay(amount uint) error {
 		return fmt.Errorf("payment is higher than order total amount")
 	}
 
-	o.TrackChange(o, &Paid{Amount: amount})
+	aggregate.TrackChange(o, &Paid{Amount: amount})
 
 	if o.Outstanding == 0 {
-		o.TrackChange(o, &Completed{})
+		aggregate.TrackChange(o, &Completed{})
 	}
 	return nil
 }
