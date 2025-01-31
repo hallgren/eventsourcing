@@ -1,7 +1,7 @@
 > [!NOTE]
-> Parts of the repository are currently rewriting and will bring breaking changes. The changes will not affect data stored in event stores, but you have to change how aggregates are constructed and saved. The reason for the change is to simplify the event repository and create separate repositories for aggregates and projections. There will also be a new package `aggregate` containing the AggregateRoot and the repositories used to save and get aggregates.
+> Parts of the repository are currently rewriting and will bring breaking changes. The changes will not affect data stored in event stores, but you have to change how aggregates are constructed and saved. The reason for the change is to simplify the exported API.
 >
->  The ongoing work is conducted in this (PR)[https://github.com/hallgren/eventsourcing/pull/143]. Please add comments there.
+>  The ongoing work is conducted in this (PR)[https://github.com/hallgren/eventsourcing/pull/147]. Please add comments there.
 >
 > BR Morgan
 
