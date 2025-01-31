@@ -228,38 +228,7 @@ type Encoder interface {
 
 ### Realtime Event Subscription
 
-Events can be pushed in realtime as they are saved to the repository.
-
-`eventsourcing.RealtimeEventStream.All(func (e Event)) *subscription` subscribes to all events.
-
-`eventsourcing.RealtimeEventStream.AggregateID(func (e Event), events ...aggregate) *subscription` events bound to specific aggregate based on type and identity.
-This makes it possible to get events pinpointed to one specific aggregate instance.
-
-`eventsourcing.RealtimeEventStream.Aggregate(func (e Event), aggregates ...aggregate) *subscription` subscribes to events bound to specific aggregate type. 
- 
-`eventsourcing.RealtimeEventStream.Event(func (e Event), events ...interface{}) *subscription` subscribes to specific events. There are no restrictions that the events need
-to come from the same aggregate, you can mix and match as you please.
-
-`eventsourcing.RealtimeEventStream.Name(f func(e Event), aggregate string, events ...string) *subscription` subscribes to events based on aggregate type and event name.
-
-The subscription is realtime and events that are saved before the call to one of the subscribers will not be exposed via the `func(e Event)` function. 
-
-Example on how to set up the event subscription and consume the events.
-
-```go
-// subscriber that will trigger on every saved events
-s := eventsourcing.RealtimeEventStream.All(func(e eventsourcing.Event) {
-    switch e := event.Data().(type) {
-        case *Born:
-            // e now have type info
-            fmt.Println(e)
-        }
-    }
-)
-
-// stop subscription
-s.Close()
-```
+For now the realtime event subscription has been removed as I'm not satisfied with the exported API. Please fill a issue if you want it back.
 
 ## Snapshot
 

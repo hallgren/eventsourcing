@@ -131,8 +131,6 @@ func saveEvents(eventStore core.EventStore, events []eventsourcing.Event) (event
 		}
 		return 0, fmt.Errorf("error from event store: %w", err)
 	}
-	// publish the saved events to realtime subscribers
-	eventsourcing.RealtimeEventStream.Publish(events)
 
 	return eventsourcing.Version(esEvents[len(esEvents)-1].GlobalVersion), nil
 }
