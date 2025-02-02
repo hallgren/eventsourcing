@@ -33,7 +33,7 @@ type Person struct {
 ```
 
 The aggregate needs to implement the `Transition(event eventsourcing.Event)` and `Register(r eventsourcing.RegisterFunc)` methods to fulfill the aggregate interface.
-This methods define how events are transformed to build the aggregate state and which events to register into the repository.
+These methods define how events are transformed to build the aggregate state and which events to register into the repository.
 
 Example of the Transition method on the `Person` aggregate.
 
@@ -131,7 +131,7 @@ type Event struct {
 
 ### Aggregate ID
 
-The identifier on the aggregate is default set by a random generated string via the crypt/rand pkg. It is possible to change the default behaivior in two ways.
+The identifier on the aggregate is default set by a random generated string via the crypt/rand pkg. It is possible to change the default behavior in two ways.
 
 * Set a specific id on the aggregate via the SetID func.
 
@@ -179,10 +179,10 @@ aggregate.Register(&Person{})
 The only thing an event store handles are events, and it must implement the following interface.
 
 ```go
-// saves events to the under laying data store.
+// saves events to the underlaying data store.
 Save(events []core.Event) error
 
-// fetches events based on identifier and type but also after a specific version. The version is used to load event that happened after a snapshot was taken.
+// fetches events based on identifier and type but also after a specific version. The version is used to load events that happened after a snapshot was taken.
 Get(id string, aggregateType string, afterVersion core.Version) (core.Iterator, error)
 ```
 
@@ -214,8 +214,8 @@ The event store needs to import the `github.com/hallgren/eventsourcing/core` mod
 
 ### Encoder
 
-Before an `eventsourcing.Event` is stored into a event store it has to be tranformed into an `core.Event`. This is done with an encoder that serializes the data properties `Data` and `Metadata` into `[]byte`.
-When a event is fetched the encoder deserialises the `Data` and `Metadata` `[]byte` back into there actual types.
+Before an `eventsourcing.Event` is stored into a event store it has to be transformed into an `core.Event`. This is done with an encoder that serializes the data properties `Data` and `Metadata` into `[]byte`.
+When an event is fetched the encoder deserialize the `Data` and `Metadata` `[]byte` back into their actual types.
 
 The default encoder uses the `encoding/json` package for serialization/deserialization. It can be replaced by using the `eventsourcing.SetEventEncoder(e Encoder)` function on the eventsourcing  package, it has to follow this interface:
 
@@ -228,17 +228,17 @@ type Encoder interface {
 
 ### Realtime Event Subscription
 
-For now the realtime event subscription has been removed as I'm not satisfied with the exported API. Please fill a issue if you want it back.
+For now the real time event subscription has been removed as I'm not satisfied with the exported API. Please fill an issue if you want it back.
 
 ## Snapshot
 
 If an aggregate has a lot of events it can take some time fetching and building the aggregate. This can be optimized with the help of a snapshot.
-The snapshot is the state of the aggregate on a specific version. Instead of iterating all events, only the events after the version is iterated and
+The snapshot is the state of the aggregate on a specific version. Instead of iterating all events, only the events after the version are iterated and
 used to build the aggregate. The use of snapshots is optional and is exposed via the snapshot functions on the aggregate package.
 
 ### Save/Load Snapshot 
 
-It's only possible to save a snapshot if it has no pending events, meaning that the aggregate events is saved before saving the snapshot.
+It's only possible to save a snapshot if it has no pending events, meaning that the aggregate events are saved before saving the snapshot.
 
 ```go
 // Saves a snapshot
@@ -273,7 +273,7 @@ External event stores:
 
 ### Unexported aggregate properties
 
-As unexported properties on a struct is not possible to serialize there is the same limitation on aggregates.
+As unexported properties on a struct are not possible to serialize there is the same limitation on aggregates.
 To fix this there are optional callback methods that can be added to the aggregate struct.
 
 ```go
@@ -321,7 +321,7 @@ It's possible to change the default json encoder by the `eventsourcing.SetSnapsh
 
 ## Projections
 
-Projections is a way to build read-models based on events. A read-model is way to expose data from events in a different form. Where the form is optimized for read-only queries.
+Projections is a way to build read-models based on events. A read-model is a way to expose data from events in a different form. Where the form is optimized for read-only queries.
 
 If you want more background on projections check out Derek Comartin projections article [Projections in Event Sourcing: Build ANY model you want!](https://codeopinion.com/projections-in-event-sourcing-build-any-model-you-want/) or Martin Fowler's [CQRS](https://martinfowler.com/bliki/CQRS.html).
 
@@ -345,7 +345,7 @@ The `callbackFunc` is called for every iterated event inside the projection. The
 type callbackFunc func(e eventsourcing.Event) error
 ```
 
-Example: Creates a projection that fetch all events from an event store and handle them in the callbackF.
+Example: Creates a projection that fetches all events from an event store and handle them in the callbackF.
 
 ```go
 p := eventsourcing.NewProjection(es.All(0, 1), func(event eventsourcing.Event) error {
@@ -371,7 +371,7 @@ RunOnce() (bool, ProjectionResult)
 
 #### RunToEnd
 
-RunToEnd fetch events from the event store until it reaches the end of the event stream. A context is passed in making it possible to cancel the projections from the outside.
+RunToEnd fetches events from the event store until it reaches the end of the event stream. A context is passed in making it possible to cancel the projections from the outside.
 
 ```go
 RunToEnd(ctx context.Context) ProjectionResult
@@ -393,7 +393,7 @@ type ProjectionResult struct {
 
 #### Run
 
-Run will run forever until event consumer is returning an error or if it's canceled from the outside. When it hits the end of the event stream it will start a timer and sleep the time set in the projection property `Pace`.
+Run will run forever until the event consumer is returning an error or if it's canceled from the outside. When it hits the end of the event stream it will start a timer and sleep the time set in the projection property `Pace`.
 
  ```go
  Run(ctx context.Context, pace time.Duration) error
@@ -403,10 +403,10 @@ A running projection can be triggered manually via `TriggerAsync()` or `TriggerS
 
 ### Projection properties
 
-A projection have a set of properties that can affect it's behaivior.
+A projection has a set of properties that can affect its behavior.
 
-* **Strict** - Default true and it will trigger an error if a fetched event is not registered in the event `Register`. This force all events to be handled by the callbackFunc.
-* **Name** - The name of the projection. Can be useful when debugging multiple running projection. The default name is the index it was created from the projection handler.
+* **Strict** - Default true and it will trigger an error if a fetched event is not registered in the event `Register`. This forces all events to be handled by the callbackFunc.
+* **Name** - The name of the projection. Can be useful when debugging multiple running projections. The default name is the index it was created from the projection handler.
 
 ### Run multiple projections
 
@@ -418,9 +418,9 @@ A set of projections can run concurrently in a group.
 g := eventsourcing.NewProjectionGroup(p1, p2, p3)
 ```
 
-A group is started with `g.Start()` where each projection will run in a separate go routine. Errors from a projection can be retrieved from a error channel `g.ErrChan`.
+A group is started with `g.Start()` where each projection will run in a separate go routine. Errors from a projection can be retrieved from an error channel `g.ErrChan`.
 
-The `g.Stop()` method is used to halt all projections in the group and it returns when all projections has stopped.
+The `g.Stop()` method is used to halt all projections in the group and it returns when all projections have stopped.
 
 ```go
 // create three projections
@@ -447,19 +447,19 @@ select {
 }
 ```
 
-The pace of the projection can be changed with the `Pace` property. Default is every 10 second.
+The pace of the projection can be changed with the `Pace` property. Default is every 10 seconds.
 
-If the pace is not fast enough for some senario it's possible to trigger manually.
+If the pace is not fast enough for some scenario it's possible to trigger manually.
 
-`TriggerAsync()`: Triggers all projections in the group and return.
+`TriggerAsync()`: Triggers all projections in the group and returns.
 
-`TriggerSync()`: Triggers all projections in the group and wait for them running to the end of there event streams.
+`TriggerSync()`: Triggers all projections in the group and waits for them running to the end of their event streams.
 
 #### Race
 
 Compared to a group the race is a one shot operation. Instead of fetching events continuously it's used to iterate and process all existing events and then return.
 
-The `Race()` method starts the projections and run them to the end of there event streams. When all projections are finished the method return.
+The `Race()` method starts the projections and runs them to the end of their event streams. When all projections are finished the method returns.
 
 ```go
 eventsourcing.ProjectionsRace(cancelOnError bool, projections ...*Projection) ([]ProjectionResult, error)
