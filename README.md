@@ -32,7 +32,7 @@ type Person struct {
 }
 ```
 
-The aggregate needs to implement the `Transition(event eventsourcing.Event)` and `Register(r eventsourcing.RegisterFunc)` methods to fulfill the aggregate interface.
+The aggregate needs to implement the `Transition(event eventsourcing.Event)` and `Register(r aggregate.RegisterFunc)` methods to fulfill the aggregate interface.
 These methods define how events are transformed to build the aggregate state and which events to register into the repository.
 
 Example of the Transition method on the `Person` aggregate.
@@ -56,7 +56,7 @@ Example or the Register method:
 
 ```go
 // Register callback method that register Person events to the repository
-func (person *Person) Register(r eventsourcing.RegisterFunc) {
+func (person *Person) Register(r aggregate.RegisterFunc) {
     r(&Born{}, &AgedOneYear{})
 }
 ```
