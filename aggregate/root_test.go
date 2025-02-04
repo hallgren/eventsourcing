@@ -1,17 +1,19 @@
-package eventsourcing_test
+package aggregate_test
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"testing"
 	"time"
 
 	"github.com/hallgren/eventsourcing"
+	"github.com/hallgren/eventsourcing/aggregate"
 )
 
 // Person aggregate
 type Person struct {
-	eventsourcing.AggregateRoot
+	aggregate.Root
 	Name string
 	Age  int
 	Dead int
@@ -32,7 +34,7 @@ func CreatePerson(name string) (*Person, error) {
 		return nil, errors.New("name can't be blank")
 	}
 	person := Person{}
-	person.TrackChange(&person, &Born{Name: name})
+	aggregate.TrackChange(&person, &Born{Name: name})
 	return &person, nil
 }
 
@@ -49,7 +51,7 @@ func CreatePersonWithID(id, name string) (*Person, error) {
 	} else if err != nil {
 		return nil, err
 	}
-	person.TrackChange(&person, &Born{Name: name})
+	aggregate.TrackChange(&person, &Born{Name: name})
 	return &person, nil
 }
 
@@ -57,11 +59,11 @@ func CreatePersonWithID(id, name string) (*Person, error) {
 func (person *Person) GrowOlder() {
 	metaData := make(map[string]interface{})
 	metaData["foo"] = "bar"
-	person.TrackChangeWithMetadata(person, &AgedOneYear{}, metaData)
+	aggregate.TrackChangeWithMetadata(person, &AgedOneYear{}, metaData)
 }
 
 // Register bind the events to the repository when the aggregate is registered.
-func (person *Person) Register(f eventsourcing.RegisterFunc) {
+func (person *Person) Register(f aggregate.RegisterFunc) {
 	f(&Born{}, &AgedOneYear{})
 }
 
@@ -74,6 +76,13 @@ func (person *Person) Transition(event eventsourcing.Event) {
 	case *AgedOneYear:
 		person.Age += 1
 	}
+}
+
+func (person *Person) SerializeSnapshot(aggregate.SnapshotMarshal) ([]byte, error) {
+	return json.Marshal(person)
+}
+func (person *Person) DeserializeSnapshot(f aggregate.SnapshotUnmarshal, d []byte) error {
+	return json.Unmarshal(d, person)
 }
 
 func TestPersonWithNoEvents(t *testing.T) {
@@ -199,7 +208,7 @@ func TestSetIDFunc(t *testing.T) {
 		return fmt.Sprint(counter)
 	}
 
-	eventsourcing.SetIDFunc(f)
+	aggregate.SetIDFunc(f)
 	for i := 1; i < 10; i++ {
 		person, _ := CreatePerson("kalle")
 		if person.ID() != fmt.Sprint(i) {

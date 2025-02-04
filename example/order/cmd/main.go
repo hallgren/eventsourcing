@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/hallgren/eventsourcing"
+	"github.com/hallgren/eventsourcing/aggregate"
 	"github.com/hallgren/eventsourcing/eventstore/memory"
 	"github.com/hallgren/eventsourcing/example/order"
 )
@@ -17,8 +18,7 @@ type Order struct {
 
 func main() {
 	es := memory.Create()
-	repo := eventsourcing.NewEventRepository(es)
-	repo.Register(&order.Order{})
+	aggregate.Register(&order.Order{})
 
 	ongoingOrders := make(map[string]*Order)
 	completedCount := 0
@@ -51,7 +51,7 @@ func main() {
 					panic(err)
 				}
 			}
-			err = repo.Save(o)
+			err = aggregate.Save(es, o)
 			if err != nil {
 				panic(err)
 			}
@@ -62,7 +62,7 @@ func main() {
 
 	for {
 		// setup how the projection will handle events and build the read model
-		p := repo.Projections.Projection(es.All(0, 3), func(e eventsourcing.Event) error {
+		p := eventsourcing.NewProjection(es.All(0, 3), func(e eventsourcing.Event) error {
 			switch event := e.Data().(type) {
 			// When an order is created add it to an order map
 			case *order.Created:
