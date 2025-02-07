@@ -1,10 +1,3 @@
-> [!NOTE]
-> Parts of the repository are currently rewriting and will bring breaking changes. The changes will not affect data stored in event stores, but you have to change how aggregates are constructed and saved. The reason for the change is to simplify the exported API.
->
->  The ongoing work is merged to the master branch.
->
-> BR Morgan
-
 # Overview
 
 This set of modules is a post implementation of [@jen20's](https://github.com/jen20) way of implementing event sourcing. You can find the original blog post [here](https://jen20.dev/post/event-sourcing-in-go/) and github repo [here](https://github.com/jen20/go-event-sourcing-sample).
