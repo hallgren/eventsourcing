@@ -19,11 +19,11 @@ func (i *iterator) Close() {
 
 // Next steps to the next event in the stream
 func (i *iterator) Next() bool {
-	eventESDB, err := i.stream.Recv()
+	event, err := i.stream.Recv()
 	if err != nil {
 		return false
 	}
-	i.event = eventESDB
+	i.event = event
 	return true
 }
 
@@ -33,7 +33,7 @@ func (i *iterator) Value() (core.Event, error) {
 
 	event := core.Event{
 		AggregateID:   stream[1],
-		Version:       core.Version(i.event.Event.EventNumber) + 1, // +1 as the eventsourcing Version starts on 1 but the esdb event version starts on 0
+		Version:       core.Version(i.event.Event.EventNumber) + 1, // +1 as the eventsourcing Version starts on 1 but the kurrent event version starts on 0
 		AggregateType: stream[0],
 		Timestamp:     i.event.Event.CreatedDate,
 		Data:          i.event.Event.Data,

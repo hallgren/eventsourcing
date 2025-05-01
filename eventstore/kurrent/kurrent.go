@@ -9,27 +9,27 @@ import (
 
 const streamSeparator = "-"
 
-// ESDB is the event store handler
-type ESDB struct {
+// Kurrent is the event store handler
+type Kurrent struct {
 	client      *kurrentdb.Client
 	contentType kurrentdb.ContentType
 }
 
 // Open binds the event store db client
-func Open(client *kurrentdb.Client, jsonSerializer bool) *ESDB {
+func Open(client *kurrentdb.Client, jsonSerializer bool) *Kurrent {
 	// defaults to binary
 	var contentType kurrentdb.ContentType
 	if jsonSerializer {
 		contentType = kurrentdb.ContentTypeJson
 	}
-	return &ESDB{
+	return &Kurrent{
 		client:      client,
 		contentType: contentType,
 	}
 }
 
 // Save persists events to the database
-func (es *ESDB) Save(events []core.Event) error {
+func (es *Kurrent) Save(events []core.Event) error {
 	// If no event return no error
 	if len(events) == 0 {
 		return nil
@@ -40,7 +40,7 @@ func (es *ESDB) Save(events []core.Event) error {
 	aggregateType := events[0].AggregateType
 	version := events[0].Version
 	stream := stream(aggregateType, aggregateID)
-	esdbEvents := make([]kurrentdb.EventData, len(events))
+	KurrentEvents := make([]kurrentdb.EventData, len(events))
 
 	for i, event := range events {
 		eventData := kurrentdb.EventData{
@@ -50,17 +50,17 @@ func (es *ESDB) Save(events []core.Event) error {
 			Metadata:    event.Metadata,
 		}
 
-		esdbEvents[i] = eventData
+		KurrentEvents[i] = eventData
 	}
 
 	if version > 1 {
-		// StreamRevision value -2 due to version in the eventsourcing pkg start on 1 but in esdb on 0
+		// StreamRevision value -2 due to version in the eventsourcing pkg start on 1 but in kurrent on 0
 		// and also the AppendToStream streamOptions expected revision is one version before the first appended event.
 		streamOptions.StreamState = kurrentdb.StreamRevision{Value: uint64(version) - 2}
 	} else if version == 1 {
 		streamOptions.StreamState = kurrentdb.NoStream{}
 	}
-	wr, err := es.client.AppendToStream(context.Background(), stream, streamOptions, esdbEvents...)
+	wr, err := es.client.AppendToStream(context.Background(), stream, streamOptions, KurrentEvents...)
 	if err != nil {
 		if err, ok := kurrentdb.FromError(err); !ok {
 			if err.Code() == kurrentdb.ErrorCodeWrongExpectedVersion {
@@ -77,7 +77,7 @@ func (es *ESDB) Save(events []core.Event) error {
 	return nil
 }
 
-func (es *ESDB) Get(ctx context.Context, id string, aggregateType string, afterVersion core.Version) (core.Iterator, error) {
+func (es *Kurrent) Get(ctx context.Context, id string, aggregateType string, afterVersion core.Version) (core.Iterator, error) {
 	streamID := stream(aggregateType, id)
 
 	from := kurrentdb.StreamRevision{Value: uint64(afterVersion)}
