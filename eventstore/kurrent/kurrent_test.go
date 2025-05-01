@@ -10,7 +10,7 @@ import (
 
 	"github.com/hallgren/eventsourcing/core"
 	"github.com/hallgren/eventsourcing/core/testsuite"
-	es "github.com/hallgren/eventsourcing/eventstore/kurrent"
+	"github.com/hallgren/eventsourcing/eventstore/kurrent"
 )
 
 func TestSuite(t *testing.T) {
@@ -36,7 +36,7 @@ func TestSuite(t *testing.T) {
 
 	defer container.Terminate(ctx)
 
-	endpoint, err := container.PortEndpoint(ctx, "2113", "esdb")
+	endpoint, err := container.PortEndpoint(ctx, "2113", "kurrent")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func TestSuite(t *testing.T) {
 			return nil, nil, err
 		}
 
-		es := es.Open(db, true)
+		es := kurrent.Open(db, true)
 		return es, func() {
 		}, nil
 	}
