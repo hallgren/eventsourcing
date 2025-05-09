@@ -184,6 +184,7 @@ There are four implementations in this repository.
 * SQL - `go get github.com/hallgren/eventsourcing/eventstore/sql`
 * Bolt - `go get github.com/hallgren/eventsourcing/eventstore/bbolt`
 * Event Store DB - `go get github.com/hallgren/eventsourcing/eventstore/esdb`
+* Kurrent DB - `go get github.com/hallgren/eventsourcing/eventstore/kurrent`
 * RAM Memory - part of the main module
 
 External event stores:
