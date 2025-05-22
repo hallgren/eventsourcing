@@ -27,7 +27,11 @@ func (i *Iterator) Value() (Event, error) {
 	// apply the event to the aggregate
 	f, found := internal.GlobalRegister.EventRegistered(event)
 	if !found {
-		return Event{}, ErrEventNotRegistered
+		return Event{
+			event:    event,
+			data:     nil,
+			metadata: nil,
+		}, ErrEventNotRegistered
 	}
 	data := f()
 	err = internal.EventEncoder.Deserialize(event.Data, &data)

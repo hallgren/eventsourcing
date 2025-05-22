@@ -164,7 +164,7 @@ func (p *Projection) RunOnce() (bool, ProjectionResult) {
 		if err != nil {
 			if errors.Is(err, ErrEventNotRegistered) {
 				if p.Strict {
-					err = fmt.Errorf("event not registered aggregate type: %s, reason: %s, global version: %d, %w", event.AggregateType(), event.Reason(), event.GlobalVersion(), ErrEventNotRegistered)
+					err = fmt.Errorf("event not registered aggregate type: %s, reason: %s, global version: %d, %w", event.AggregateType(), event.event.Reason, event.GlobalVersion(), ErrEventNotRegistered)
 					return false, ProjectionResult{Error: err, Name: p.Name, LastHandledEvent: lastHandledEvent}
 				}
 				continue
