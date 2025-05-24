@@ -3,7 +3,6 @@ package eventsourcing
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
