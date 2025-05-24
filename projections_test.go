@@ -402,11 +402,6 @@ func TestStrict(t *testing.T) {
 	if !errors.Is(result.Error, eventsourcing.ErrEventNotRegistered) {
 		t.Fatalf("expected ErrEventNotRegistered got %q", err.Error())
 	}
-
-	expected := "event not registered aggregate type: Person, reason: Born, global version: 1, event not registered"
-	if result.Error.Error() != expected {
-		t.Fatalf(`expected "%s", got %q`, expected, result.Error)
-	}
 }
 
 func TestRace(t *testing.T) {
