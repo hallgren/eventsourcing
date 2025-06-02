@@ -1,6 +1,7 @@
 package eventsourcing
 
 import (
+	"fmt"
 	"github.com/hallgren/eventsourcing/core"
 	"github.com/hallgren/eventsourcing/internal"
 )
@@ -27,7 +28,7 @@ func (i *Iterator) Value() (Event, error) {
 	// apply the event to the aggregate
 	f, found := internal.GlobalRegister.EventRegistered(event)
 	if !found {
-		return Event{}, ErrEventNotRegistered
+		return Event{}, fmt.Errorf("event not registered, aggregate type: %s, reason: %s, global version: %d, %w", event.AggregateType, event.Reason, event.GlobalVersion, ErrEventNotRegistered)
 	}
 	data := f()
 	err = internal.EventEncoder.Deserialize(event.Data, &data)
