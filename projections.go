@@ -3,7 +3,6 @@ package eventsourcing
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -167,7 +166,7 @@ func (p *Projection) RunOnce() (bool, ProjectionResult) {
 		if err != nil {
 			if errors.Is(err, ErrEventNotRegistered) {
 				if p.Strict {
-					errStrict := fmt.Errorf("%w %w", err, ErrProjectionInStrictMode)
+					errStrict := errors.Join(err, ErrProjectionInStrictMode)
 					return false, ProjectionResult{Error: errStrict, Name: p.Name, LastHandledEvent: lastHandledEvent}
 				}
 				continue
