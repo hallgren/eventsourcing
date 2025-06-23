@@ -28,8 +28,7 @@ func TestSuitePostgres(t *testing.T) {
 			"POSTGRES_PASSWORD": "secret",
 			"POSTGRES_DB":       "testdb",
 		},
-		WaitingFor: wait.ForLog("database system is ready to accept connections").
-			WithStartupTimeout(30 * time.Second),
+		WaitingFor: wait.ForListeningPort("5432/tcp").WithStartupTimeout(30 * time.Second),
 	}
 
 	// Start the container
