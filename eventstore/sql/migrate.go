@@ -20,7 +20,7 @@ const createTableSQLite = `
 
 const createTablePostgres = `
 	CREATE TABLE IF NOT EXISTS events (
-	seq INTEGER PRIMARY KEY,
+	seq SERIAL PRIMARY KEY,
 	id TEXT NOT NULL,
 	version INTEGER,
 	reason TEXT,
