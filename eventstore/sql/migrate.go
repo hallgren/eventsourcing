@@ -14,7 +14,9 @@ const createTablePostgres = `CREATE TABLE events (
   type TEXT,
   timestamp TEXT,
   data BYTEA,
-  metadata BYTEA
+  metadata BYTEA,
+  UNIQUE (id, type, version),
+  INDEX (id, type)
 );`
 
 // Migrate is the legacy function that creates the database for sqlite
@@ -36,8 +38,6 @@ func (s *SQL) MigrateSQLite() error {
 func (s *SQL) MigratePostgres() error {
 	sqlStmt := []string{
 		createTablePostgres,
-		`create unique index id_type_version on events (id, type, version);`,
-		`create index id_type on events (id, type);`,
 	}
 	return s.migrate(sqlStmt)
 }
