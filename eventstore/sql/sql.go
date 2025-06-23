@@ -69,7 +69,7 @@ func (s *SQL) Save(events []core.Event) error {
 
 	var currentVersion core.Version
 	var version int
-	selectStm := `Select version from events where id=? and type=? order by version desc limit 1`
+	selectStm := `Select version from events where id=$1 and type=$2 order by version desc limit 1`
 	err = tx.QueryRow(selectStm, aggregateID, aggregateType).Scan(&version)
 	if err != nil && err != sql.ErrNoRows {
 		return err
@@ -105,7 +105,7 @@ func (s *SQL) Save(events []core.Event) error {
 
 // Get the events from database
 func (s *SQL) Get(ctx context.Context, id string, aggregateType string, afterVersion core.Version) (core.Iterator, error) {
-	selectStm := `Select seq, id, version, reason, type, timestamp, data, metadata from events where id=? and type=? and version>? order by version asc`
+	selectStm := `Select seq, id, version, reason, type, timestamp, data, metadata from events where id=$1 and type=$2 and version>$3 order by version asc`
 	rows, err := s.db.QueryContext(ctx, selectStm, id, aggregateType, afterVersion)
 	if err != nil {
 		return nil, err
@@ -115,7 +115,7 @@ func (s *SQL) Get(ctx context.Context, id string, aggregateType string, afterVer
 
 // All iterate over all event in GlobalEvents order
 func (s *SQL) All(start core.Version, count uint64) (core.Iterator, error) {
-	selectStm := `Select seq, id, version, reason, type, timestamp, data, metadata from events where seq >= ? order by seq asc LIMIT ?`
+	selectStm := `Select seq, id, version, reason, type, timestamp, data, metadata from events where seq >= $1 order by seq asc LIMIT $2`
 	rows, err := s.db.Query(selectStm, start, count)
 	if err != nil {
 		return nil, err
