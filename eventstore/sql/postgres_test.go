@@ -52,7 +52,7 @@ func TestSuitePostgres(t *testing.T) {
 		// Connect using database/sql
 		db, err := sqldriver.Open("postgres", dsn)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("db open failed: %w", err)
 		}
 		// Test the connection
 		err = db.Ping()
@@ -62,7 +62,7 @@ func TestSuitePostgres(t *testing.T) {
 		es := sql.Open(db)
 		err = es.MigratePostgres()
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("migration failed: %w", err)
 		}
 		return es, func() {
 			db.Close()

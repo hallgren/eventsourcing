@@ -2,6 +2,7 @@ package sql
 
 import (
 	"context"
+	"fmt"
 )
 
 const createTableSQLite = `create table events (seq INTEGER PRIMARY KEY AUTOINCREMENT, id VARCHAR NOT NULL, version INTEGER, reason VARCHAR, type VARCHAR, timestamp VARCHAR, data BLOB, metadata BLOB);`
@@ -58,7 +59,7 @@ func (s *SQL) migrate(stm []string) error {
 	for _, b := range stm {
 		_, err := tx.Exec(b)
 		if err != nil {
-			return err
+			return fmt.Errorf("tx.Exec failed: %w", err)
 		}
 	}
 	return tx.Commit()
