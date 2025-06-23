@@ -59,7 +59,7 @@ func (s *SQL) migrate(stm []string) error {
 	for _, b := range stm {
 		_, err := tx.Exec(b)
 		if err != nil {
-			return fmt.Errorf("tx.Exec failed: %w", err)
+			return fmt.Errorf("tx.Exec failed: %v %w", b, err)
 		}
 	}
 	return tx.Commit()
