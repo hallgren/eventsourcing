@@ -16,7 +16,7 @@ import (
 	"github.com/hallgren/eventsourcing/eventstore/sql"
 )
 
-func TestSuite(t *testing.T) {
+func TestSuitePostgres(t *testing.T) {
 	ctx := context.Background()
 
 	// Set up the PostgreSQL container request
