@@ -11,20 +11,29 @@ import (
 	"github.com/hallgren/eventsourcing/core"
 )
 
-// SQL event store handler
-type SQL struct {
+var stm = []string{
+	`create table events (seq INTEGER PRIMARY KEY AUTOINCREMENT, id VARCHAR NOT NULL, version INTEGER, reason VARCHAR, type VARCHAR, timestamp VARCHAR, data BLOB, metadata BLOB);`,
+	`create unique index id_type_version on events (id, type, version);`,
+	`create index id_type on events (id, type);`,
+}
+
+// SQLite event store handler
+type SQLite struct {
 	db   *sql.DB
 	lock *sync.Mutex
 }
 
-// Open connection to database
-func Open(db *sql.DB) *SQL {
-	return &SQL{
-		db: db,
+// NewSQLite connection to database
+func NewSQLite(db *sql.DB) (*SQLite, error) {
+	if err := migrate(db, stm); err != nil {
+		return nil, err
 	}
+	return &SQLite{
+		db: db,
+	}, nil
 }
 
-// OpenWithSingelWriter prevents multiple writers to save events concurrently
+// NewSQLiteSingelWriter prevents multiple writers to save events concurrently
 //
 // Multiple go routines writing concurrently to sqlite could produce sqlite to lock.
 // https://www.sqlite.org/cgi/src/doc/begin-concurrent/doc/begin_concurrent.md
@@ -34,20 +43,23 @@ func Open(db *sql.DB) *SQL {
 // or some other mechanism that supports blocking to ensure that at most one
 // writer is attempting to COMMIT a BEGIN CONCURRENT transaction at a time.
 // This is usually easier if all writers are part of the same operating system process."
-func OpenWithSingelWriter(db *sql.DB) *SQL {
-	return &SQL{
+func NewSQLiteSingelWriter(db *sql.DB) (*SQLite, error) {
+	if err := migrate(db, stm); err != nil {
+		return nil, err
+	}
+	return &SQLite{
 		db:   db,
 		lock: &sync.Mutex{},
-	}
+	}, nil
 }
 
 // Close the connection
-func (s *SQL) Close() {
+func (s *SQLite) Close() {
 	s.db.Close()
 }
 
 // Save persists events to the database
-func (s *SQL) Save(events []core.Event) error {
+func (s *SQLite) Save(events []core.Event) error {
 	// If no event return no error
 	if len(events) == 0 {
 		return nil
@@ -104,7 +116,7 @@ func (s *SQL) Save(events []core.Event) error {
 }
 
 // Get the events from database
-func (s *SQL) Get(ctx context.Context, id string, aggregateType string, afterVersion core.Version) (core.Iterator, error) {
+func (s *SQLite) Get(ctx context.Context, id string, aggregateType string, afterVersion core.Version) (core.Iterator, error) {
 	selectStm := `Select seq, id, version, reason, type, timestamp, data, metadata from events where id=? and type=? and version>? order by version asc`
 	rows, err := s.db.QueryContext(ctx, selectStm, id, aggregateType, afterVersion)
 	if err != nil {
@@ -114,7 +126,7 @@ func (s *SQL) Get(ctx context.Context, id string, aggregateType string, afterVer
 }
 
 // All iterate over all event in GlobalEvents order
-func (s *SQL) All(start core.Version, count uint64) (core.Iterator, error) {
+func (s *SQLite) All(start core.Version, count uint64) (core.Iterator, error) {
 	selectStm := `Select seq, id, version, reason, type, timestamp, data, metadata from events where seq >= ? order by seq asc LIMIT ?`
 	rows, err := s.db.Query(selectStm, start, count)
 	if err != nil {
