@@ -2,8 +2,6 @@ module github.com/hallgren/eventsourcing/eventstore/sql
 
 go 1.23.0
 
-toolchain go1.23.10
-
 require (
 	github.com/hallgren/eventsourcing/core v0.4.0
 	github.com/lib/pq v1.10.9
