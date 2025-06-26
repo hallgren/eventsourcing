@@ -182,7 +182,7 @@ Get(id string, aggregateType string, afterVersion core.Version) (core.Iterator, 
 There are four implementations in this repository.
 
 * SQL - `go get github.com/hallgren/eventsourcing/eventstore/sql`
-	* Sqlite
+	* SQLite
 	* Postgres
 * Bolt - `go get github.com/hallgren/eventsourcing/eventstore/bbolt`
 * Event Store DB - `go get github.com/hallgren/eventsourcing/eventstore/esdb`

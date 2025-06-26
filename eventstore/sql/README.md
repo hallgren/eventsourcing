@@ -1,7 +1,7 @@
 The sql eventstore is a module containing multiple sql based event stores.
 
-* sqlite
+* SQLite
   * NewSQLite(db *sql.DB) (*SQLite, error) 
   * NewSQLiteSingelWriter(db *sql.DB) (*SQLite, error)
-* postgres
+* Postgres
   * NewPostgres(db *sql.DB) (*Postgres, error)
