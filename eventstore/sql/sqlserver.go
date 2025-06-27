@@ -13,11 +13,11 @@ import (
 
 const createTableSQLServer = `CREATE TABLE events (
     seq INT IDENTITY(1,1) PRIMARY KEY,
-    id NVARCHAR(MAX) NOT NULL,
+    id NVARCHAR(255) NOT NULL,
     version INT,
-    reason NVARCHAR(MAX),
-    type NVARCHAR(MAX),
-    timestamp NVARCHAR(MAX),
+    reason NVARCHAR(255),
+    type NVARCHAR(255),
+    timestamp NVARCHAR(255),
     data VARBINARY(MAX),
     metadata VARBINARY(MAX),
     CONSTRAINT uq_events UNIQUE (id, type, version)
