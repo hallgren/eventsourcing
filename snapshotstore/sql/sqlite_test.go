@@ -29,7 +29,7 @@ func snapshotstore() (*sql.SQLite, func(), error) {
 		return nil, nil, err
 	}
 
-	store, err := sql.Open(db)
+	store, err := sql.NewSQLite(db)
 	if err != nil {
 		return nil, nil, err
 	}
