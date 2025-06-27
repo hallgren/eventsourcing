@@ -77,8 +77,8 @@ func (s *SQLServer) Save(events []core.Event) error {
 
 	var currentVersion core.Version
 	var version int
-	selectStm := `SELECT TOP 1 version FROM [events] WHERE [id] = ? AND [type] = ? ORDER BY version DESC;`
-	err = tx.QueryRow(selectStm, aggregateID, aggregateType).Scan(&version)
+	selectStm := `SELECT TOP 1 version FROM [events] WHERE [id] = @id AND [type] = @type ORDER BY version DESC;`
+	err = tx.QueryRow(selectStm, sql.Named("id", aggregateID), sql.Named("type", aggregateType)).Scan(&version)
 	if err != nil && err != sql.ErrNoRows {
 		return err
 	} else if err == sql.ErrNoRows {
@@ -95,9 +95,18 @@ func (s *SQLServer) Save(events []core.Event) error {
 	}
 
 	var lastInsertedID int64
-	insert := `Insert into [events] (id, version, reason, type, timestamp, data, metadata) values ($1, $2, $3, $4, $5, $6, $7)`
+	insert := `INSERT INTO [events] (id, version, reason, type, timestamp, data, metadata) VALUES (@id, @version, @reason, @type, @timestamp, @data, @metadata);`
 	for i, event := range events {
-		res, err := tx.Exec(insert, event.AggregateID, event.Version, event.Reason, event.AggregateType, event.Timestamp.Format(time.RFC3339), event.Data, event.Metadata)
+		res, err := tx.Exec(
+			insert,
+			sql.Named("id", event.AggregateID),
+			sql.Named("version", event.Version),
+			sql.Named("reason", event.Reason),
+			sql.Named("type", event.AggregateType),
+			sql.Named("timestamp", event.Timestamp.Format(time.RFC3339)),
+			sql.Named("data", event.Data),
+			sql.Named("metadata", event.Metadata),
+		)
 		if err != nil {
 			return err
 		}
@@ -113,8 +122,11 @@ func (s *SQLServer) Save(events []core.Event) error {
 
 // Get the events from database
 func (s *SQLServer) Get(ctx context.Context, id string, aggregateType string, afterVersion core.Version) (core.Iterator, error) {
-	selectStm := `Select seq, id, version, reason, type, timestamp, data, metadata from [events] where id=? and type=? and version>? order by version asc`
-	rows, err := s.db.QueryContext(ctx, selectStm, id, aggregateType, afterVersion)
+	selectStm := `SELECT seq, id, version, reason, type, timestamp, data, metadata
+FROM [events]
+WHERE id = @id AND type = @type AND version > @version
+ORDER BY version ASC;`
+	rows, err := s.db.QueryContext(ctx, selectStm, sql.Named("id", id), sql.Named("type", aggregateType), sql.Named("version", afterVersion))
 	if err != nil {
 		return nil, err
 	}
@@ -123,8 +135,12 @@ func (s *SQLServer) Get(ctx context.Context, id string, aggregateType string, af
 
 // All iterate over all event in GlobalEvents order
 func (s *SQLServer) All(start core.Version, count uint64) (core.Iterator, error) {
-	selectStm := `Select seq, id, version, reason, type, timestamp, data, metadata from [events] where seq >= ? order by seq asc LIMIT ?`
-	rows, err := s.db.Query(selectStm, start, count)
+	selectStm := `SELECT seq, id, version, reason, type, timestamp, data, metadata
+FROM [events]
+WHERE seq >= @seq
+ORDER BY seq ASC
+OFFSET 0 ROWS FETCH NEXT @limit ROWS ONLY;`
+	rows, err := s.db.Query(selectStm, sql.Named("ses", start), sql.Named("limit", count))
 	if err != nil {
 		return nil, err
 	}
