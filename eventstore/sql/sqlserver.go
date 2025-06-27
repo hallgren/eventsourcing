@@ -11,16 +11,19 @@ import (
 	"github.com/hallgren/eventsourcing/core"
 )
 
-const createTableSQLServer = `CREATE TABLE IF NOT EXISTS [events] (
-    [seq] INT IDENTITY(1,1) PRIMARY KEY,
-    [id] NVARCHAR(255) NOT NULL,
-    [version] INT,
-    [reason] NVARCHAR(255),
-    [type] NVARCHAR(255),
-    [timestamp] NVARCHAR(255),
-    [data] VARBINARY(MAX),
-    [metadata] VARBINARY(MAX),
-);`
+const createTableSQLServer = `IF OBJECT_ID('[events]', 'U') IS NULL
+BEGIN
+    CREATE TABLE [events] (
+        [seq] INT IDENTITY(1,1) PRIMARY KEY,
+        [id] NVARCHAR(255) NOT NULL,
+        [version] INT,
+        [reason] NVARCHAR(255),
+        [type] NVARCHAR(255),
+        [timestamp] NVARCHAR(255),
+        [data] VARBINARY(MAX),
+        [metadata] VARBINARY(MAX)
+    );
+END`
 
 // CONSTRAINT uq_events UNIQUE ([id], [type], [version])
 const indexSQLServer = `CREATE INDEX IF NOT EXISTS id_type ON [events] ([id], [type]);`
