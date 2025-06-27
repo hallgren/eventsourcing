@@ -30,7 +30,7 @@ const indexSQLServer = `CREATE INDEX IF NOT EXISTS id_type ON [events] ([id], [t
 
 var stmSQLServer = []string{
 	createTableSQLServer,
-	//indexSQLServer,
+	indexSQLServer,
 }
 
 // SQLite event store handler
