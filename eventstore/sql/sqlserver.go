@@ -73,7 +73,7 @@ func (s *SQLServer) Save(events []core.Event) error {
 
 	var currentVersion core.Version
 	var version int
-	selectStm := `Select version from events where id=? and type=? order by version desc limit 1`
+	selectStm := `SELECT TOP 1 version FROM events WHERE id = ? AND type = ? ORDER BY version DESC;`
 	err = tx.QueryRow(selectStm, aggregateID, aggregateType).Scan(&version)
 	if err != nil && err != sql.ErrNoRows {
 		return err
