@@ -95,9 +95,11 @@ func (s *SQLServer) Save(events []core.Event) error {
 	}
 
 	var lastInsertedID int64
-	insert := `INSERT INTO [events] (id, version, reason, type, timestamp, data, metadata) VALUES (@id, @version, @reason, @type, @timestamp, @data, @metadata);`
+	insert := `INSERT INTO [events] (id, version, reason, type, timestamp, data, metadata)
+OUTPUT INSERTED.seq
+VALUES (@id, @version, @reason, @type, @timestamp, @data, @metadata);`
 	for i, event := range events {
-		res, err := tx.Exec(
+		err := tx.QueryRow(
 			insert,
 			sql.Named("id", event.AggregateID),
 			sql.Named("version", event.Version),
@@ -106,11 +108,7 @@ func (s *SQLServer) Save(events []core.Event) error {
 			sql.Named("timestamp", event.Timestamp.Format(time.RFC3339)),
 			sql.Named("data", event.Data),
 			sql.Named("metadata", event.Metadata),
-		)
-		if err != nil {
-			return err
-		}
-		lastInsertedID, err = res.LastInsertId()
+		).Scan(&lastInsertedID)
 		if err != nil {
 			return err
 		}
