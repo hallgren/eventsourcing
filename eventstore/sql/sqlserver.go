@@ -73,7 +73,7 @@ func (s *SQLServer) Save(events []core.Event) error {
 
 	var currentVersion core.Version
 	var version int
-	selectStm := `SELECT TOP 1 version FROM events WHERE id = ? AND type = ? ORDER BY version DESC;`
+	selectStm := `SELECT TOP 1 version FROM [events] WHERE id = ? AND type = ? ORDER BY version DESC;`
 	err = tx.QueryRow(selectStm, aggregateID, aggregateType).Scan(&version)
 	if err != nil && err != sql.ErrNoRows {
 		return err
@@ -91,7 +91,7 @@ func (s *SQLServer) Save(events []core.Event) error {
 	}
 
 	var lastInsertedID int64
-	insert := `Insert into events (id, version, reason, type, timestamp, data, metadata) values ($1, $2, $3, $4, $5, $6, $7)`
+	insert := `Insert into [events] (id, version, reason, type, timestamp, data, metadata) values ($1, $2, $3, $4, $5, $6, $7)`
 	for i, event := range events {
 		res, err := tx.Exec(insert, event.AggregateID, event.Version, event.Reason, event.AggregateType, event.Timestamp.Format(time.RFC3339), event.Data, event.Metadata)
 		if err != nil {
@@ -109,7 +109,7 @@ func (s *SQLServer) Save(events []core.Event) error {
 
 // Get the events from database
 func (s *SQLServer) Get(ctx context.Context, id string, aggregateType string, afterVersion core.Version) (core.Iterator, error) {
-	selectStm := `Select seq, id, version, reason, type, timestamp, data, metadata from events where id=? and type=? and version>? order by version asc`
+	selectStm := `Select seq, id, version, reason, type, timestamp, data, metadata from [events] where id=? and type=? and version>? order by version asc`
 	rows, err := s.db.QueryContext(ctx, selectStm, id, aggregateType, afterVersion)
 	if err != nil {
 		return nil, err
@@ -119,7 +119,7 @@ func (s *SQLServer) Get(ctx context.Context, id string, aggregateType string, af
 
 // All iterate over all event in GlobalEvents order
 func (s *SQLServer) All(start core.Version, count uint64) (core.Iterator, error) {
-	selectStm := `Select seq, id, version, reason, type, timestamp, data, metadata from events where seq >= ? order by seq asc LIMIT ?`
+	selectStm := `Select seq, id, version, reason, type, timestamp, data, metadata from [events] where seq >= ? order by seq asc LIMIT ?`
 	rows, err := s.db.Query(selectStm, start, count)
 	if err != nil {
 		return nil, err
