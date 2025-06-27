@@ -71,7 +71,7 @@ func TestSuiteSQLServer(t *testing.T) {
 		if err2 != nil {
 			t.Fatal("Failed to connect to database:", err)
 		}
-		es, err := sql.NewPostgres(db)
+		es, err := sql.NewSQLServer(db)
 		if err != nil {
 			t.Fatal(err)
 		}
