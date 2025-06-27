@@ -26,7 +26,14 @@ BEGIN
     );
 END`
 
-const indexSQLServer = `CREATE INDEX IF NOT EXISTS id_type ON [events] ([id], [type]);`
+const indexSQLServer = `IF NOT EXISTS (
+    SELECT 1 
+    FROM sys.indexes 
+    WHERE name = 'id_type' AND object_id = OBJECT_ID('events')
+)
+BEGIN
+    CREATE INDEX id_type ON [events] ([id], [type]);
+END`
 
 var stmSQLServer = []string{
 	createTableSQLServer,
