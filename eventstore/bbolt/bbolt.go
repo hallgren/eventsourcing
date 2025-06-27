@@ -32,14 +32,14 @@ type boltEvent struct {
 	Metadata      []byte // map[string]interface{}
 }
 
-// MustOpenBBolt opens the event stream found in the given file. If the file is not found it will be created and
-// initialized. Will panic if it has problems persisting the changes to the filesystem.
-func MustOpenBBolt(dbFile string) *BBolt {
+// New opens the event stream found in the given file. If the file is not found it will be created and
+// initialized. Will return error if it has problems persisting the changes to the filesystem.
+func New(dbFile string) (*BBolt, error) {
 	db, err := bbolt.Open(dbFile, 0600, &bbolt.Options{
 		Timeout: 1 * time.Second,
 	})
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	// Ensure that we have a bucket to store the global event ordering
@@ -50,11 +50,11 @@ func MustOpenBBolt(dbFile string) *BBolt {
 		return nil
 	})
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	return &BBolt{
 		db: db,
-	}
+	}, nil
 }
 
 // Save an aggregate (its events)
