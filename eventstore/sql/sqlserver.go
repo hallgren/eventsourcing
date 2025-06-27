@@ -20,13 +20,14 @@ const createTableSQLServer = `CREATE TABLE IF NOT EXISTS [events] (
     [timestamp] NVARCHAR(255),
     [data] VARBINARY(MAX),
     [metadata] VARBINARY(MAX),
-    CONSTRAINT uq_events UNIQUE ([id], [type], [version])
 );`
+
+// CONSTRAINT uq_events UNIQUE ([id], [type], [version])
 const indexSQLServer = `CREATE INDEX IF NOT EXISTS id_type ON [events] ([id], [type]);`
 
 var stmSQLServer = []string{
 	createTableSQLServer,
-	indexSQLServer,
+	//indexSQLServer,
 }
 
 // SQLite event store handler
