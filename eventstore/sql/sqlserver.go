@@ -11,10 +11,22 @@ import (
 	"github.com/hallgren/eventsourcing/core"
 )
 
+const createTableSQLServer = `CREATE TABLE events (
+    seq INT IDENTITY(1,1) PRIMARY KEY,
+    id NVARCHAR(MAX) NOT NULL,
+    version INT,
+    reason NVARCHAR(MAX),
+    type NVARCHAR(MAX),
+    timestamp NVARCHAR(MAX),
+    data VARBINARY(MAX),
+    metadata VARBINARY(MAX),
+    CONSTRAINT uq_events UNIQUE (id, type, version)
+);`
+const indexSQLServer = `CREATE INDEX id_type ON events (id, type);`
+
 var stmSQLServer = []string{
-	`create table events (seq INTEGER PRIMARY KEY AUTOINCREMENT, id VARCHAR NOT NULL, version INTEGER, reason VARCHAR, type VARCHAR, timestamp VARCHAR, data BLOB, metadata BLOB);`,
-	`create unique index id_type_version on events (id, type, version);`,
-	`create index id_type on events (id, type);`,
+	createTableSQLServer,
+	indexSQLServer,
 }
 
 // SQLite event store handler
