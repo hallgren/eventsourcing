@@ -261,6 +261,8 @@ type SnapshotStore interface {
 There are two implementations in this repository.
 
 * SQL - `go get github.com/hallgren/eventsourcing/snapshotstore/sql`
+	* SQLite
+	* Postgres
 * RAM Memory - part of the main module
 
 External event stores:
