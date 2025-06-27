@@ -21,11 +21,11 @@ BEGIN
         [type] NVARCHAR(255),
         [timestamp] NVARCHAR(255),
         [data] VARBINARY(MAX),
-        [metadata] VARBINARY(MAX)
+        [metadata] VARBINARY(MAX),
+        CONSTRAINT uq_events UNIQUE ([id], [type], [version])
     );
 END`
 
-// CONSTRAINT uq_events UNIQUE ([id], [type], [version])
 const indexSQLServer = `CREATE INDEX IF NOT EXISTS id_type ON [events] ([id], [type]);`
 
 var stmSQLServer = []string{
