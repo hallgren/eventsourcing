@@ -12,7 +12,10 @@ import (
 func TestSuite(t *testing.T) {
 	f := func() (core.EventStore, func(), error) {
 		dbFile := "bolt.db"
-		es := bbolt.MustOpenBBolt(dbFile)
+		es, err := bbolt.New(dbFile)
+		if err != nil {
+			return nil, nil, err
+		}
 		return es, func() {
 			es.Close()
 			os.Remove(dbFile)
