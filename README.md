@@ -181,7 +181,7 @@ Get(id string, aggregateType string, afterVersion core.Version) (core.Iterator, 
 
 There are four implementations in this repository.
 
-* (SQL)[https://github.com/hallgren/eventsourcing/blob/master/eventstore/sql/README.md] - `go get github.com/hallgren/eventsourcing/eventstore/sql`
+* [SQL](https://github.com/hallgren/eventsourcing/blob/master/eventstore/sql/README.md) - `go get github.com/hallgren/eventsourcing/eventstore/sql`
 	* SQLite
 	* Postgres
 * Bolt - `go get github.com/hallgren/eventsourcing/eventstore/bbolt`
