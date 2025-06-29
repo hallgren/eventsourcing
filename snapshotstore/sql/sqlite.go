@@ -9,8 +9,16 @@ import (
 	"github.com/hallgren/eventsourcing/core"
 )
 
-const createTableSQLite = `create table if not exists snapshots (id VARCHAR NOT NULL, type VARCHAR, version INTEGER, global_version INTEGER, state BLOB);`
-const createIndexSQLite = `create unique index if not exists id_type on snapshots (id, type);`
+const createTableSQLite = `
+CREATE TABLE IF NOT EXISTS snapshots (
+	id              VARCHAR NOT NULL,
+	type            VARCHAR,
+	version         INTEGER,
+	global_version  INTEGER,
+	state           BLOB
+);`
+
+const createIndexSQLite = `CREATE UNIQUE INDEX IF NOT EXISTS id_type ON snapshots (id, type);`
 
 type SQLite struct {
 	db *sql.DB
