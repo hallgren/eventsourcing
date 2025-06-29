@@ -12,9 +12,18 @@ import (
 )
 
 var stm = []string{
-	`create table events (seq INTEGER PRIMARY KEY AUTOINCREMENT, id VARCHAR NOT NULL, version INTEGER, reason VARCHAR, type VARCHAR, timestamp VARCHAR, data BLOB, metadata BLOB);`,
-	`create unique index id_type_version on events (id, type, version);`,
-	`create index id_type on events (id, type);`,
+	`CREATE TABLE IF NOT EXISTS events (
+		seq        INTEGER PRIMARY KEY AUTOINCREMENT,
+		id         VARCHAR NOT NULL,
+		version    INTEGER,
+		reason     VARCHAR,
+		type       VARCHAR,
+		timestamp  VARCHAR,
+		data       BLOB,
+		metadata   BLOB,
+		UNIQUE (id, type, version)
+	);`,
+	`CREATE INDEX IF NOT EXISTS id_type ON events (id, type);`,
 }
 
 // SQLite event store handler
