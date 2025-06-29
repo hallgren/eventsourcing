@@ -260,7 +260,7 @@ type SnapshotStore interface {
 
 There are two implementations in this repository.
 
-* SQL - `go get github.com/hallgren/eventsourcing/snapshotstore/sql`
+* [SQL](https://github.com/hallgren/eventsourcing/blob/master/snapshotstore/sql/README.md) - `go get github.com/hallgren/eventsourcing/snapshotstore/sql`
 	* SQLite
 	* Postgres
 * RAM Memory - part of the main module
