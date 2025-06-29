@@ -17,19 +17,7 @@ func TestSuite(t *testing.T) {
 	testsuite.TestSnapshotStore(t, f)
 }
 
-func TestMultipleMigrate(t *testing.T) {
-	ss, close, err := snapshotstore()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer close()
-	err = ss.Migrate()
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func snapshotstore() (*sql.SQL, func(), error) {
+func snapshotstore() (*sql.SQLite, func(), error) {
 	db, err := sqldriver.Open("sqlite3", "file::memory:?locked.sqlite?cache=shared")
 	if err != nil {
 		return nil, nil, err
@@ -41,8 +29,7 @@ func snapshotstore() (*sql.SQL, func(), error) {
 		return nil, nil, err
 	}
 
-	store := sql.Open(db)
-	err = store.Migrate()
+	store, err := sql.NewSQLite(db)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -9,24 +9,41 @@ import (
 	"github.com/hallgren/eventsourcing/core"
 )
 
-type SQL struct {
+const createTableSQLite = `
+CREATE TABLE IF NOT EXISTS snapshots (
+	id              VARCHAR NOT NULL,
+	type            VARCHAR,
+	version         INTEGER,
+	global_version  INTEGER,
+	state           BLOB
+);`
+
+const createIndexSQLite = `CREATE UNIQUE INDEX IF NOT EXISTS id_type ON snapshots (id, type);`
+
+type SQLite struct {
 	db *sql.DB
 }
 
-// Open connection to database
-func Open(db *sql.DB) *SQL {
-	return &SQL{
-		db: db,
+// NewSQLite connection to database
+func NewSQLite(db *sql.DB) (*SQLite, error) {
+	if err := migrate(db, []string{
+		createTableSQLite,
+		createIndexSQLite,
+	}); err != nil {
+		return nil, err
 	}
+	return &SQLite{
+		db: db,
+	}, nil
 }
 
 // Close the connection
-func (s *SQL) Close() {
+func (s *SQLite) Close() {
 	s.db.Close()
 }
 
 // Save persists the snapshot
-func (s *SQL) Save(snapshot core.Snapshot) error {
+func (s *SQLite) Save(snapshot core.Snapshot) error {
 	tx, err := s.db.BeginTx(context.Background(), nil)
 	if err != nil {
 		return errors.New(fmt.Sprintf("could not start a write transaction, %v", err))
@@ -58,7 +75,7 @@ func (s *SQL) Save(snapshot core.Snapshot) error {
 }
 
 // Get return the snapshot data from the database
-func (s *SQL) Get(ctx context.Context, aggregateID, aggregateType string) (core.Snapshot, error) {
+func (s *SQLite) Get(ctx context.Context, aggregateID, aggregateType string) (core.Snapshot, error) {
 	var globalVersion core.Version
 	var version core.Version
 	var state []byte
