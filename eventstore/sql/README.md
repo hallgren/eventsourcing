@@ -2,7 +2,7 @@
 
 The sql eventstore is a module containing multiple sql based event stores that are all based on the
 database/sql interface in go standard library. The different event stores has specific database schemas
-that support the dirrent databases.
+that support the different databases.
 
 ## SQLite
 
