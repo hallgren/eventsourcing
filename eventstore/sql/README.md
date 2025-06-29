@@ -28,6 +28,7 @@ Supports the SQLite database https://www.sqlite.org/
 
 ### Constructor
 
+```go
 // NewSQLite connection to database
 NewSQLite(db *sql.DB) (*SQLite, error) 
 
@@ -42,11 +43,11 @@ NewSQLite(db *sql.DB) (*SQLite, error)
 // writer is attempting to COMMIT a BEGIN CONCURRENT transaction at a time.
 // This is usually easier if all writers are part of the same operating system process."
 NewSQLiteSingelWriter(db *sql.DB) (*SQLite, error)
+```
 
 ### Example of use
 
 ```go
-
 import (
   // have to alias the sql package as it use the same name
 	gosql "database/sql"
@@ -54,7 +55,6 @@ import (
   // use the sqlite driver from mattn in this example
 	_ "github.com/mattn/go-sqlite3"
 )
-
 
 db, err := gosql.Open("sqlite3", "file::memory:?cache=shared")
 if err != nil {
@@ -94,15 +94,15 @@ CREATE INDEX IF NOT EXISTS id_type ON events (id, type);
 
 ### Constructor
 
+```go
 // NewPostgres connection to database
 func NewPostgres(db *sql.DB) (*Postgres, error) {
+```
 
 ### Example of use
 
 ```go
-
 import (
-
   // have to alias the sql package as it use the same name
 	gosql "database/sql"
 
@@ -145,7 +145,6 @@ BEGIN
     );
 END
 
-
 IF NOT EXISTS (
     SELECT 1 
     FROM sys.indexes 
@@ -154,7 +153,6 @@ IF NOT EXISTS (
 BEGIN
     CREATE INDEX id_type ON [events] ([id], [type]);
 END
-
 
 IF NOT EXISTS (
     SELECT 1 
@@ -168,8 +166,10 @@ END
 
 ### Constructor
 
+```go
 // NewSQLite connection to database
 func NewSQLServer(db *sql.DB) (*SQLServer, error) {
+```
 
 ### Example of use
 
