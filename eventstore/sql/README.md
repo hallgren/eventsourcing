@@ -122,3 +122,74 @@ if err != nil {
 }
 postgresEventStore, err := sql.NewPostgres(db)
 ```
+
+## Windwos SQL Server
+
+Supports Windows SQL Server database https://www.microsoft.com/en-us/sql-server
+
+### Database Schema
+
+```go
+IF OBJECT_ID('[events]', 'U') IS NULL
+BEGIN
+    CREATE TABLE [events] (
+        [seq] INT IDENTITY(1,1) PRIMARY KEY,
+        [id] NVARCHAR(255) NOT NULL,
+        [version] INT,
+        [reason] NVARCHAR(255),
+        [type] NVARCHAR(255),
+        [timestamp] NVARCHAR(255),
+        [data] VARBINARY(MAX),
+        [metadata] VARBINARY(MAX),
+        CONSTRAINT uq_events UNIQUE ([id], [type], [version])
+    );
+END
+
+
+IF NOT EXISTS (
+    SELECT 1 
+    FROM sys.indexes 
+    WHERE name = 'id_type' AND object_id = OBJECT_ID('events')
+)
+BEGIN
+    CREATE INDEX id_type ON [events] ([id], [type]);
+END
+
+
+IF NOT EXISTS (
+    SELECT 1 
+    FROM sys.indexes 
+    WHERE name = 'id_type' AND object_id = OBJECT_ID('events')
+)
+BEGIN
+    CREATE INDEX id_type ON [events] ([id], [type]);
+END
+```
+
+### Constructor
+
+// NewSQLite connection to database
+func NewSQLServer(db *sql.DB) (*SQLServer, error) {
+
+### Example of use
+
+```go
+import (
+	// alias the go sql package
+	gosql "database/sql"
+
+  // uses the sql server driver from denisenkom
+	_ "github.com/denisenkom/go-mssqldb"
+	"github.com/hallgren/eventsourcing/eventstore/sql"
+)
+
+db, err := gosql.Open("sqlserver", dsn)
+if err != nil {
+	return err
+}
+err = db.Ping() {
+if err != nil {
+	return err
+}
+SqlServerEventStore, err := sql.NewSQLServer(db)
+```
