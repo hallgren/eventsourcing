@@ -49,10 +49,10 @@ NewSQLiteSingelWriter(db *sql.DB) (*SQLite, error)
 
 ```go
 import (
-  // have to alias the sql package as it use the same name
+	// have to alias the sql package as it use the same name
 	gosql "database/sql"
 	"github.com/hallgren/eventsourcing/eventstore/sql"
-  // use the sqlite driver from mattn in this example
+	// use the sqlite driver from mattn in this example
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -103,10 +103,10 @@ func NewPostgres(db *sql.DB) (*Postgres, error) {
 
 ```go
 import (
-  // have to alias the sql package as it use the same name
+	// have to alias the sql package as it use the same name
 	gosql "database/sql"
-
-  // in this example we use the pg postgres driver
+	
+	// in this example we use the pg postgres driver
 	_ "github.com/lib/pq"
 	"github.com/hallgren/eventsourcing/eventstore/sql"
 )
@@ -177,8 +177,7 @@ func NewSQLServer(db *sql.DB) (*SQLServer, error) {
 import (
 	// alias the go sql package
 	gosql "database/sql"
-
-  // uses the sql server driver from denisenkom
+	 // uses the sql server driver from denisenkom
 	_ "github.com/denisenkom/go-mssqldb"
 	"github.com/hallgren/eventsourcing/eventstore/sql"
 )
