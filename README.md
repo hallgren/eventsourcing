@@ -184,6 +184,7 @@ There are four implementations in this repository.
 * [SQL](https://github.com/hallgren/eventsourcing/blob/master/eventstore/sql/README.md) - `go get github.com/hallgren/eventsourcing/eventstore/sql`
 	* SQLite
 	* Postgres
+ 	* Microsoft SQL Server 
 * Bolt - `go get github.com/hallgren/eventsourcing/eventstore/bbolt`
 * Event Store DB - `go get github.com/hallgren/eventsourcing/eventstore/esdb`
 * Kurrent DB - `go get github.com/hallgren/eventsourcing/eventstore/kurrent`
