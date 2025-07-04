@@ -40,13 +40,13 @@ var stmSQLServer = []string{
 	indexSQLServer,
 }
 
-// SQLite event store handler
+// SQLServer event store handler
 type SQLServer struct {
 	db   *sql.DB
 	lock *sync.Mutex
 }
 
-// NewSQLite connection to database
+// NewSQLServer connection to database
 func NewSQLServer(db *sql.DB) (*SQLServer, error) {
 	if err := migrate(db, stmSQLServer); err != nil {
 		return nil, err
