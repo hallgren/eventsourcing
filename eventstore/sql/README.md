@@ -123,9 +123,9 @@ if err != nil {
 postgresEventStore, err := sql.NewPostgres(db)
 ```
 
-## Windwos SQL Server
+## Microsoft SQL Server
 
-Supports Windows SQL Server database https://www.microsoft.com/en-us/sql-server
+Supports Microsoft SQL Server database https://www.microsoft.com/en-us/sql-server
 
 ### Database Schema
 
@@ -167,7 +167,7 @@ END
 ### Constructor
 
 ```go
-// NewSQLite connection to database
+// NewSQLServer connection to database
 func NewSQLServer(db *sql.DB) (*SQLServer, error) {
 ```
 
