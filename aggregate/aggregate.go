@@ -13,6 +13,14 @@ import (
 
 type RegisterFunc = func(events ...interface{})
 
+// RealtimeEventsFunc is a function that is called after the events are saved in the event store and
+// it can be used to trigger other parts of the application in real time compared to projections that are async.
+// It is a syncronious call that can affect the performance of the application if it takes long
+// time to return.
+// It does not return error as the events are already saved in the event store and can't be rolled-back.
+// If not set from the outside it does nothing.
+var RealtimeEventsFunc = func(events []eventsourcing.Event) {}
+
 // Aggregate interface to use the aggregate root specific methods
 type aggregate interface {
 	root() *Root
@@ -84,6 +92,12 @@ func Save(es core.EventStore, a aggregate) error {
 	// set internal properties and reset the events slice
 	lastEvent := root.aggregateEvents[len(root.aggregateEvents)-1]
 	root.aggregateVersion = lastEvent.Version()
+
+	// Trigger realtime events function with the actual events as if they are modified they are not used anymore
+	// and are reset after this function call.
+	RealtimeEventsFunc(root.aggregateEvents)
+
+	// reset the events on the aggregate
 	root.aggregateEvents = []eventsourcing.Event{}
 
 	return nil
