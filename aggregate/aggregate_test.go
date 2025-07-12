@@ -90,3 +90,31 @@ func TestLoadNoneExistingAggregate(t *testing.T) {
 		t.Fatal("could not get aggregate")
 	}
 }
+
+func TestRealtimeEventsFunc(t *testing.T) {
+	var triggered bool
+	// set the realtime events function
+	aggregate.RealtimeEventsFunc = func(events []eventsourcing.Event) {
+		triggered = true
+	}
+
+	// reset the realtime events func
+	defer func() {
+		aggregate.RealtimeEventsFunc = func(events []eventsourcing.Event) {}
+	}()
+
+	es := memory.Create()
+	aggregate.Register(&Person{})
+	person, err := CreatePerson("kalle")
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = aggregate.Save(es, person)
+	if err != nil {
+		t.Fatalf("could not save aggregate, err: %v", err)
+	}
+
+	if !triggered {
+		t.Fatalf("RealtimeEventsFunc not triggered")
+	}
+}
