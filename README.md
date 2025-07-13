@@ -228,7 +228,7 @@ type Encoder interface {
 Realtime events refer to events that are handled immediately after they are persisted in an event store. They enable parts of an application (or other systems)
 to react instantly to changes, instead of waiting for asynchronous processing projections.
 
-`aggregate.RealtimeEventsFunc` is a callback function that is invoked synchronously after events have been persisted in the event store.
+`aggregate.realtimeEventsFunc` is a callback function that is invoked synchronously after events have been persisted in the event store.
 It's intended for triggering immediate side effects, such as:
 
 * Notifying other services (e.g., via message brokers)
@@ -236,7 +236,7 @@ It's intended for triggering immediate side effects, such as:
 * Triggering workflows or alerts
 
 ```go
-aggregate.RealtimeEventsFunc = func(events []eventsourcing.Event) {
+aggregate.SetRealtimeEventsFunc = func(events []eventsourcing.Event) {
     for _, e := range events {
         // Push event to WebSocket channel
         websocketHub.Broadcast(e)

@@ -94,13 +94,13 @@ func TestLoadNoneExistingAggregate(t *testing.T) {
 func TestRealtimeEventsFunc(t *testing.T) {
 	var triggered bool
 	// set the realtime events function
-	aggregate.RealtimeEventsFunc = func(events []eventsourcing.Event) {
+	aggregate.SetRealtimeEventsFunc(func(events []eventsourcing.Event) {
 		triggered = true
-	}
+	})
 
 	// reset the realtime events func
 	defer func() {
-		aggregate.RealtimeEventsFunc = func(events []eventsourcing.Event) {}
+		aggregate.SetRealtimeEventsFunc(func(events []eventsourcing.Event) {})
 	}()
 
 	es := memory.Create()
