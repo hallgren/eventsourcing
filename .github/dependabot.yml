@@ -7,6 +7,10 @@ version: 2
 updates:
 # eventstore
   - package-ecosystem: "gomod"
+    directory: "/eventstore/kurrent/"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "gomod"
     directory: "/eventstore/esdb/"
     schedule:
       interval: "weekly"
