@@ -49,7 +49,6 @@ func TestLoadAggregateFromSnapshot(t *testing.T) {
 	es := memory.Create()
 	ss := ss.Create()
 	aggregate.Register(&Person{})
-
 	person, err := CreatePerson("kalle")
 	if err != nil {
 		t.Fatal(err)
@@ -88,5 +87,37 @@ func TestLoadNoneExistingAggregate(t *testing.T) {
 	err := aggregate.Load(context.Background(), es, "none_existing", &p)
 	if err != eventsourcing.ErrAggregateNotFound {
 		t.Fatal("could not get aggregate")
+	}
+}
+
+func TestPostSaveTrigger(t *testing.T) {
+	var trigger bool
+	es := memory.Create()
+	aggregate.Register(&Person{})
+
+	person, err := CreatePerson("kalle")
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = aggregate.Save(es, person)
+	if err != nil {
+		t.Fatalf("could not save aggregate, err: %v", err)
+	}
+	if trigger {
+		t.Fatal("post trigger should not be activated")
+	}
+
+	// set the post save trigger function
+	aggregate.SaveHook(func(events []eventsourcing.Event) {
+		trigger = true
+	}, &Person{})
+
+	person.GrowOlder()
+	err = aggregate.Save(es, person)
+	if err != nil {
+		t.Fatalf("could not save aggregate, err: %v", err)
+	}
+	if !trigger {
+		t.Fatal("post trigger should be activated")
 	}
 }
