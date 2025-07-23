@@ -66,7 +66,7 @@ func Save(es core.EventStore, a aggregate) error {
 	root := a.root()
 
 	// return as quick as possible when no events to process
-	if len(root.aggregateEvents) == 0 {
+	if len(root.events) == 0 {
 		return nil
 	}
 
@@ -79,12 +79,12 @@ func Save(es core.EventStore, a aggregate) error {
 		return err
 	}
 	// update the global version on the aggregate
-	root.aggregateGlobalVersion = globalVersion
+	root.globalVersion = globalVersion
 
 	// set internal properties and reset the events slice
-	lastEvent := root.aggregateEvents[len(root.aggregateEvents)-1]
-	root.aggregateVersion = lastEvent.Version()
-	root.aggregateEvents = []eventsourcing.Event{}
+	lastEvent := root.events[len(root.events)-1]
+	root.version = lastEvent.Version()
+	root.events = []eventsourcing.Event{}
 
 	return nil
 }
