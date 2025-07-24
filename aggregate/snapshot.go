@@ -51,9 +51,9 @@ func getSnapshot(ctx context.Context, ss core.SnapshotStore, id string, s snapsh
 
 	// set the internal aggregate properties
 	root := s.root()
-	root.aggregateGlobalVersion = eventsourcing.Version(snap.GlobalVersion)
-	root.aggregateVersion = eventsourcing.Version(snap.Version)
-	root.aggregateID = snap.ID
+	root.globalVersion = eventsourcing.Version(snap.GlobalVersion)
+	root.version = eventsourcing.Version(snap.Version)
+	root.id = snap.ID
 
 	return nil
 }
