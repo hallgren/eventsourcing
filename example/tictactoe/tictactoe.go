@@ -61,6 +61,7 @@ type GameOver struct {
 	Winner string
 }
 
+// Constructor
 func NewGame() *Game {
 	g := Game{}
 	aggregate.TrackChange(&g, &Started{})
@@ -78,6 +79,26 @@ func (g *Game) GameOver() bool {
 
 func (g *Game) Winner() string {
 	return g.winner
+}
+
+// Render prints the board
+func (g *Game) Render() {
+	for i, row := range g.board {
+		for j, cell := range row {
+			if cell == "" {
+				fmt.Print("   ")
+			} else {
+				fmt.Printf(" %s ", cell)
+			}
+			if j < len(row)-1 {
+				fmt.Print("|")
+			}
+		}
+		fmt.Println()
+		if i < len(g.board)-1 {
+			fmt.Println("---+---+---")
+		}
+	}
 }
 
 // Commands
@@ -108,6 +129,7 @@ func (g *Game) PlayMove(x, y int) error {
 	return nil
 }
 
+// helpers
 // checkWinner returns "X" or "O" if there's a winner, or "" if none.
 func checkWinner(board [3][3]string) string {
 	// Check rows and columns
