@@ -9,44 +9,54 @@ import (
 
 type Game struct {
 	aggregate.Root
-	Board    [3][3]string // "X", "O", or ""
-	Turn     string       // "X" or "O"
-	GameOver bool
-	Winner   string // "X", "O", or ""
+	board    [3][3]string // "X", "O", or ""
+	turn     string       // "X" or "O"
+	gameOver bool
+	winner   string // "X", "O", or ""
 }
 
+// Transition is an method to transform events to game state. The state is then used
+// to uphold the rules of the game. This method is needed for the Game to be an aggregate
+// and be used by the functions in the aggregate package.
 func (g *Game) Transition(event eventsourcing.Event) {
 	switch e := event.Data().(type) {
 	case *Started:
-		g.Turn = "X"
+		g.turn = "X"
 	case *XMoved:
-		g.Board[e.X][e.Y] = "X"
-		g.Turn = "O"
+		g.board[e.X][e.Y] = "X"
+		g.turn = "O"
 	case *OMoved:
-		g.Board[e.X][e.Y] = "O"
-		g.Turn = "X"
+		g.board[e.X][e.Y] = "O"
+		g.turn = "X"
 	case *GameOver:
-		g.GameOver = true
-		g.Winner = e.Winner
+		g.gameOver = true
+		g.winner = e.Winner
 	}
 }
 
+// Register is used to register the events and the aggregate to the internal register.
 func (g *Game) Register(f aggregate.RegisterFunc) {
-	f(&XMoved{}, &OMoved{})
+	f(&Started{}, &XMoved{}, &OMoved{}, &GameOver{})
 }
 
+// Events
+
+// Started indicates that the game has started
 type Started struct{}
 
+// XMoved then the X player moved togheter with the cordinates.
 type XMoved struct {
 	X int
 	Y int
 }
 
+// OMoved then the O player moved togheter with the cordinates.
 type OMoved struct {
 	X int
 	Y int
 }
 
+// GameOver is the last event containing the winner and enpty string if it's a draw.
 type GameOver struct {
 	Winner string
 }
@@ -57,26 +67,41 @@ func NewGame() *Game {
 	return &g
 }
 
+// Query methods
+func (g *Game) Turn() string {
+	return g.turn
+}
+
+func (g *Game) GameOver() bool {
+	return g.gameOver
+}
+
+func (g *Game) Winner() string {
+	return g.winner
+}
+
+// Commands
 func (g *Game) PlayMove(x, y int) error {
-	if g.GameOver {
+	// verify that the move can be made
+	if g.gameOver {
 		return fmt.Errorf("game over")
 	}
-	if g.Board[x][y] != "" {
+	if g.board[x][y] != "" {
 		return fmt.Errorf("position already taken")
 	}
 
-	if g.Turn == "X" {
+	if g.turn == "X" {
 		aggregate.TrackChange(g, &XMoved{x, y})
 	} else {
 		aggregate.TrackChange(g, &OMoved{x, y})
 	}
 
-	if winner := checkWinner(g.Board); winner != "" {
+	if winner := checkWinner(g.board); winner != "" {
 		aggregate.TrackChange(g, &GameOver{Winner: winner})
 		return nil
 	}
 
-	if isDraw(g.Board) {
+	if isDraw(g.board) {
 		aggregate.TrackChange(g, &GameOver{})
 	}
 
