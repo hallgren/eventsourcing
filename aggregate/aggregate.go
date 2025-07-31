@@ -80,15 +80,15 @@ func Save(es core.EventStore, a aggregate) error {
 	if err != nil {
 		return err
 	}
-	// update the global version on the aggregate
+	// set the global version
 	root.globalVersion = globalVersion
 
-	// set internal properties and reset the events slice
+	// set the  internal version
 	lastEvent := root.events[len(root.events)-1]
 	root.version = lastEvent.Version()
 
-	typ := aggregateType(a)
-	if f, ok := postSaveHookMap[typ]; ok {
+	// run post save hook function for the aggregate type
+	if f, ok := postSaveHookMap[aggregateType(a)]; ok {
 		f(root.events)
 	}
 
