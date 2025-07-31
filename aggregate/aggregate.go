@@ -86,14 +86,14 @@ func Save(es core.EventStore, a aggregate) error {
 	// set internal properties and reset the events slice
 	lastEvent := root.events[len(root.events)-1]
 	root.version = lastEvent.Version()
-	root.events = []eventsourcing.Event{}
 
 	typ := aggregateType(a)
 	if f, ok := postSaveHookMap[typ]; ok {
 		f(root.events)
 	}
-	root.events = []eventsourcing.Event{}
 
+	// clear the events
+	root.events = []eventsourcing.Event{}
 	return nil
 }
 
@@ -105,7 +105,7 @@ func Register(a aggregate) {
 // SaveHook enables for events being saved to an event store also trigger an application function. This enables the
 // application to react in realtime for events from specific aggregates.
 func SaveHook(f func(events []eventsourcing.Event), aggregates ...aggregate) {
-	// set the realtimeEventsFunc for each aggregate
+	// set the post save hook func for each aggregate
 	for _, a := range aggregates {
 		if internal.GlobalRegister.AggregateRegistered(a) {
 			typ := aggregateType(a)

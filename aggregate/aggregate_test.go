@@ -92,6 +92,7 @@ func TestLoadNoneExistingAggregate(t *testing.T) {
 
 func TestPostSaveTrigger(t *testing.T) {
 	var trigger bool
+	var event eventsourcing.Event
 	es := memory.Create()
 	aggregate.Register(&Person{})
 
@@ -110,6 +111,7 @@ func TestPostSaveTrigger(t *testing.T) {
 	// set the post save trigger function
 	aggregate.SaveHook(func(events []eventsourcing.Event) {
 		trigger = true
+		event = events[0]
 	}, &Person{})
 
 	person.GrowOlder()
@@ -119,5 +121,8 @@ func TestPostSaveTrigger(t *testing.T) {
 	}
 	if !trigger {
 		t.Fatal("post trigger should be activated")
+	}
+	if event.Reason() != "AgedOneYear" {
+		t.Fatalf("expected AgedOneYesr event got %v", event.Reason())
 	}
 }
