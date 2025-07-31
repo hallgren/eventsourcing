@@ -28,15 +28,21 @@ func (g *Game) Transition(event eventsourcing.Event) {
 	case *OMoved:
 		g.board[e.X][e.Y] = "O"
 		g.turn = "X"
-	case *GameOver:
+	case *Draw:
 		g.gameOver = true
-		g.winner = e.Winner
+		g.winner = ""
+	case *XWon:
+		g.gameOver = true
+		g.winner = "X"
+	case *OWon:
+		g.gameOver = true
+		g.winner = "O"
 	}
 }
 
 // Register is used to register the events and the aggregate to the internal register.
 func (g *Game) Register(f aggregate.RegisterFunc) {
-	f(&Started{}, &XMoved{}, &OMoved{}, &GameOver{})
+	f(&Started{}, &XMoved{}, &OMoved{}, &Draw{}, &XWon{}, &OWon{})
 }
 
 // Events
@@ -56,10 +62,14 @@ type OMoved struct {
 	Y int
 }
 
-// GameOver is the last event containing the winner and enpty string if it's a draw.
-type GameOver struct {
-	Winner string
-}
+// XWon is the last event when X is the winner
+type XWon struct{}
+
+// OWon is the last event when O is the winner
+type OWon struct{}
+
+// Draw is when either X now O won
+type Draw struct{}
 
 // Constructor
 func NewGame() *Game {
@@ -73,7 +83,7 @@ func (g *Game) Turn() string {
 	return g.turn
 }
 
-func (g *Game) GameOver() bool {
+func (g *Game) Done() bool {
 	return g.gameOver
 }
 
@@ -117,13 +127,18 @@ func (g *Game) PlayMove(x, y int) error {
 		aggregate.TrackChange(g, &OMoved{x, y})
 	}
 
-	if winner := checkWinner(g.board); winner != "" {
-		aggregate.TrackChange(g, &GameOver{Winner: winner})
+	winner := checkWinner(g.board)
+	if winner == "X" {
+		aggregate.TrackChange(g, &XWon{})
+		return nil
+	}
+	if winner == "O" {
+		aggregate.TrackChange(g, &OWon{})
 		return nil
 	}
 
 	if isDraw(g.board) {
-		aggregate.TrackChange(g, &GameOver{})
+		aggregate.TrackChange(g, &Draw{})
 	}
 
 	return nil

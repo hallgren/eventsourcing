@@ -55,8 +55,16 @@ func TestWinDetection(t *testing.T) {
 	game.PlayMove(0, 1)
 	game.PlayMove(1, 1)
 	game.PlayMove(0, 2) // X wins
-	if !game.GameOver() || game.Winner() != "X" {
-		t.Errorf("Expected X to win, got GameOver=%v, Winner=%s", game.GameOver(), game.Winner())
+	if !game.Done() || game.Winner() != "X" {
+		t.Errorf("Expected X to win, got GameOver=%v, Winner=%s", game.Done(), game.Winner())
+	}
+
+	// make sure the last event is XWon
+	l := len(game.Events())
+	switch game.Events()[l-1].Data().(type) {
+	case *tictactoe.XWon:
+	default:
+		t.Fatalf("expected last event to be XWon but was %v", game.Events()[l-1].Reason())
 	}
 }
 
@@ -71,10 +79,17 @@ func TestDrawDetection(t *testing.T) {
 	game.PlayMove(1, 0) // X
 	game.PlayMove(1, 2) // O
 	// third row
-	game.PlayMove(2, 1) // X
-	game.PlayMove(2, 0) // X
-	_ = game.PlayMove(2, 2)
-	if !game.GameOver() || game.Winner() != "" {
-		t.Errorf("Expected draw, got GameOver=%v, Winner=%s", game.GameOver(), game.Winner())
+	game.PlayMove(2, 1)     // X
+	game.PlayMove(2, 0)     // O
+	_ = game.PlayMove(2, 2) // X
+	if !game.Done() || game.Winner() != "" {
+		t.Errorf("Expected draw, got GameOver=%v, Winner=%s", game.Done(), game.Winner())
+	}
+	// make sure the last event is Draw
+	l := len(game.Events())
+	switch game.Events()[l-1].Data().(type) {
+	case *tictactoe.Draw:
+	default:
+		t.Fatalf("expected last event to be Draw but was %v", game.Events()[l-1].Reason())
 	}
 }
