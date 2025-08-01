@@ -109,7 +109,7 @@ func Register(a aggregate) {
 func SetSaveHook(f func(events []eventsourcing.Event), aggregates ...aggregate) error {
 	for _, a := range aggregates {
 		if !internal.GlobalRegister.AggregateRegistered(a) {
-			return fmt.Errorf("%s %w", aggregateType(a), eventsourcing.ErrAggregateNotRegistered)
+			return fmt.Errorf("%s %w when calling the SetSaveHook", aggregateType(a), eventsourcing.ErrAggregateNotRegistered)
 		}
 		saveHookMap[aggregateType(a)] = f
 	}
