@@ -2,11 +2,13 @@ package aggregate_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/hallgren/eventsourcing"
 	"github.com/hallgren/eventsourcing/aggregate"
 	"github.com/hallgren/eventsourcing/eventstore/memory"
+	"github.com/hallgren/eventsourcing/internal"
 	ss "github.com/hallgren/eventsourcing/snapshotstore/memory"
 )
 
@@ -90,7 +92,15 @@ func TestLoadNoneExistingAggregate(t *testing.T) {
 	}
 }
 
-func TestPostSaveTrigger(t *testing.T) {
+func TestSaveHookAggregateNotRegistered(t *testing.T) {
+	internal.ResetRegister()
+	err := aggregate.SetSaveHook(func(events []eventsourcing.Event) {}, &Person{})
+	if !errors.Is(err, eventsourcing.ErrAggregateNotRegistered) {
+		t.Fatalf("expected error eventsourcing.ErrAggregateNotRegistered got %v", err)
+	}
+}
+
+func TestSaveHook(t *testing.T) {
 	var trigger bool
 	var event eventsourcing.Event
 	es := memory.Create()
@@ -109,10 +119,13 @@ func TestPostSaveTrigger(t *testing.T) {
 	}
 
 	// set the post save trigger function
-	aggregate.SetSaveHook(func(events []eventsourcing.Event) {
+	err = aggregate.SetSaveHook(func(events []eventsourcing.Event) {
 		trigger = true
 		event = events[0]
 	}, &Person{})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	person.GrowOlder()
 	err = aggregate.Save(es, person)

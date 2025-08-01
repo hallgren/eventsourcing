@@ -105,13 +105,15 @@ func Register(a aggregate) {
 
 // SetSaveHook enables the application to react in realtime for saved events from specific aggregates.
 // Note that the function is ran in sync with the Save method and should return as fast as possible.
-func SetSaveHook(f func(events []eventsourcing.Event), aggregates ...aggregate) {
+// It return error if an aggregate is not registered via the aggregate.Register function.
+func SetSaveHook(f func(events []eventsourcing.Event), aggregates ...aggregate) error {
 	for _, a := range aggregates {
-		if internal.GlobalRegister.AggregateRegistered(a) {
-			typ := aggregateType(a)
-			saveHookMap[typ] = f
+		if !internal.GlobalRegister.AggregateRegistered(a) {
+			return fmt.Errorf("%s %w", aggregateType(a), eventsourcing.ErrAggregateNotRegistered)
 		}
+		saveHookMap[aggregateType(a)] = f
 	}
+	return nil
 }
 
 // Save events to the event store

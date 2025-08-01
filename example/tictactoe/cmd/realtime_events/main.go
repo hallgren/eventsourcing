@@ -18,7 +18,7 @@ func main() {
 	}
 	es := memory.Create()
 	aggregate.Register(&tictactoe.Game{})
-	aggregate.SaveHook(func(events []eventsourcing.Event) {
+	err := aggregate.SetSaveHook(func(events []eventsourcing.Event) {
 		lastEvent := events[len(events)-1]
 		switch lastEvent.Data().(type) {
 		case *tictactoe.Draw:
@@ -29,6 +29,9 @@ func main() {
 			m["O"]++
 		}
 	}, &tictactoe.Game{})
+	if err != nil {
+		panic(err)
+	}
 
 	for i := 0; i < 10; i++ {
 		game := PlayGame()
