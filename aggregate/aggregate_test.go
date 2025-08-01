@@ -123,6 +123,6 @@ func TestPostSaveTrigger(t *testing.T) {
 		t.Fatal("post trigger should be activated")
 	}
 	if event.Reason() != "AgedOneYear" {
-		t.Fatalf("expected AgedOneYesr event got %v", event.Reason())
+		t.Fatalf("expected AgedOneYear got %v", event.Reason())
 	}
 }
