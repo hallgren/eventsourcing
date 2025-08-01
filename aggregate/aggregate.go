@@ -97,7 +97,6 @@ func Save(es core.EventStore, a aggregate) error {
 	// set internal properties and reset the events slice
 	lastEvent := root.events[len(root.events)-1]
 	root.version = lastEvent.Version()
-	root.events = []eventsourcing.Event{}
 
 	// Trigger realtime events function with the actual events as if they are modified they are not used anymore
 	// and are reset after this function call.
