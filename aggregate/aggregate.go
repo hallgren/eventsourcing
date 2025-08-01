@@ -13,7 +13,8 @@ import (
 
 type RegisterFunc = func(events ...interface{})
 
-var postSaveHookMap = make(map[string]func(events []eventsourcing.Event))
+// register holding functions that is triggered when events for an aggregate is saved.
+var saveHookMap = make(map[string]func(events []eventsourcing.Event))
 
 // Aggregate interface to use the aggregate root specific methods
 type aggregate interface {
@@ -87,8 +88,8 @@ func Save(es core.EventStore, a aggregate) error {
 	lastEvent := root.events[len(root.events)-1]
 	root.version = lastEvent.Version()
 
-	// run post save hook function for the aggregate type
-	if f, ok := postSaveHookMap[aggregateType(a)]; ok {
+	// run save hook function for the aggregate type if its been set
+	if f, ok := saveHookMap[aggregateType(a)]; ok {
 		f(root.events)
 	}
 
@@ -102,14 +103,13 @@ func Register(a aggregate) {
 	internal.GlobalRegister.Register(a)
 }
 
-// SaveHook enables for events being saved to an event store also trigger an application function. This enables the
-// application to react in realtime for events from specific aggregates.
-func SaveHook(f func(events []eventsourcing.Event), aggregates ...aggregate) {
-	// set the post save hook func for each aggregate
+// SetSaveHook enables the application to react in realtime for saved events from specific aggregates.
+// Note that the function is ran in sync with the Save method and should return as fast as possible.
+func SetSaveHook(f func(events []eventsourcing.Event), aggregates ...aggregate) {
 	for _, a := range aggregates {
 		if internal.GlobalRegister.AggregateRegistered(a) {
 			typ := aggregateType(a)
-			postSaveHookMap[typ] = f
+			saveHookMap[typ] = f
 		}
 	}
 }

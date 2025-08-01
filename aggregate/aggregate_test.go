@@ -109,7 +109,7 @@ func TestPostSaveTrigger(t *testing.T) {
 	}
 
 	// set the post save trigger function
-	aggregate.SaveHook(func(events []eventsourcing.Event) {
+	aggregate.SetSaveHook(func(events []eventsourcing.Event) {
 		trigger = true
 		event = events[0]
 	}, &Person{})
