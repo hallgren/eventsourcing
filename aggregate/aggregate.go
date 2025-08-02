@@ -109,7 +109,8 @@ func Register(a aggregate) {
 	saveHookMap[aggregateType(a)] = []func(events []eventsourcing.Event){}
 }
 
-// ResetRegister reset the internal aggregate registers.
+// ResetRegister reset the internal aggregate registers
+// This is mostly used in internal tests to make sure the registers are cleared
 func ResetRegister() {
 	internal.ResetRegister()
 	saveHookMap = make(map[string][]func(events []eventsourcing.Event))
