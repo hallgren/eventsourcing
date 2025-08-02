@@ -8,7 +8,6 @@ import (
 	"github.com/hallgren/eventsourcing"
 	"github.com/hallgren/eventsourcing/aggregate"
 	"github.com/hallgren/eventsourcing/eventstore/memory"
-	"github.com/hallgren/eventsourcing/internal"
 	ss "github.com/hallgren/eventsourcing/snapshotstore/memory"
 )
 
@@ -69,6 +68,9 @@ func TestLoadAggregateFromSnapshot(t *testing.T) {
 	// add one more event to the person aggregate
 	person.GrowOlder()
 	err = aggregate.Save(es, person)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// load person to person2 from snaphost and events
 	person2 := &Person{}
@@ -93,7 +95,7 @@ func TestLoadNoneExistingAggregate(t *testing.T) {
 }
 
 func TestSaveHookAggregateNotRegistered(t *testing.T) {
-	internal.ResetRegister()
+	aggregate.ResetRegister()
 	err := aggregate.SetSaveHook(func(events []eventsourcing.Event) {}, &Person{})
 	if !errors.Is(err, eventsourcing.ErrAggregateNotRegistered) {
 		t.Fatalf("expected error eventsourcing.ErrAggregateNotRegistered got %v", err)
@@ -118,14 +120,22 @@ func TestSaveHook(t *testing.T) {
 		t.Fatal("post trigger should not be activated")
 	}
 
-	// set the post save trigger function
+	// set post save trigger functions
 	err = aggregate.SetSaveHook(func(events []eventsourcing.Event) {
 		trigger = true
+	}, &Person{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = aggregate.SetSaveHook(func(events []eventsourcing.Event) {
 		event = events[0]
 	}, &Person{})
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	// make sure double register does not affect save hook
+	aggregate.Register(&Person{})
 
 	person.GrowOlder()
 	err = aggregate.Save(es, person)
