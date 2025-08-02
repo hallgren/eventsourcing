@@ -12,21 +12,40 @@ import (
 
 func main() {
 	m := map[string]int{
-		"Draw": 0,
-		"X":    0,
-		"O":    0,
+		"Draw":   0,
+		"XWon":   0,
+		"OWon":   0,
+		"XMoves": 0,
+		"OMoves": 0,
 	}
 	es := memory.Create()
 	aggregate.Register(&tictactoe.Game{})
+
+	// Summaries results
 	err := aggregate.SetSaveHook(func(events []eventsourcing.Event) {
 		lastEvent := events[len(events)-1]
 		switch lastEvent.Data().(type) {
 		case *tictactoe.Draw:
 			m["Draw"]++
 		case *tictactoe.XWon:
-			m["X"]++
+			m["XWon"]++
 		case *tictactoe.OWon:
-			m["O"]++
+			m["OWon"]++
+		}
+	}, &tictactoe.Game{})
+	if err != nil {
+		panic(err)
+	}
+
+	// Calculate moves
+	err = aggregate.SetSaveHook(func(events []eventsourcing.Event) {
+		for _, event := range events {
+			switch event.Data().(type) {
+			case *tictactoe.XMoved:
+				m["XMoves"]++
+			case *tictactoe.OMoved:
+				m["OMoves"]++
+			}
 		}
 	}, &tictactoe.Game{})
 	if err != nil {
