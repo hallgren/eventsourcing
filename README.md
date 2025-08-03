@@ -229,11 +229,11 @@ type Encoder interface {
 The hook runs synchronously during the Save operation. Keep its execution fast and non-blocking to avoid slowing down the save process.
 
 ```go
-SetSaveHook(func(events []eventsourcing.Event) {
+aggregate.SetSaveHook(func(events []eventsourcing.Event) {
     for _, evt := range events {
         log.Printf("New event saved: %v", evt)
     }
-}, OrderAggregate, UserAggregate)
+}, &OrderAggregate{}, &UserAggregate{})
 ```
 
 ## Snapshot
