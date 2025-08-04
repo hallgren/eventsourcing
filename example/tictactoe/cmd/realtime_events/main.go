@@ -36,7 +36,7 @@ func main() {
 	// Register the TicTacToe Game aggregate
 	aggregate.Register(&tictactoe.Game{})
 
-	// Hook to capture move events (XMoved/OMoved)
+	// Hook to capture move events (XMoved/OMoved) and result events (Draw/XWon/OWon)
 	aggregate.SetRealtimeEventsFunc(func(events []eventsourcing.Event) {
 		for _, event := range events {
 			switch event.Data().(type) {
