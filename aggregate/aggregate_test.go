@@ -120,7 +120,7 @@ func TestSaveHook(t *testing.T) {
 		t.Fatal("post trigger should not be activated")
 	}
 
-	// set post save trigger functions
+	// set post save hooks
 	err = aggregate.SetSaveHook(func(events []eventsourcing.Event) {
 		trigger = true
 	}, &Person{})

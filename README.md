@@ -225,15 +225,17 @@ type Encoder interface {
 
 ### Realtime Event
 
-`SetSaveHook` allows your application to register a callback that is triggered synchronously whenever events are saved for specific aggregates. This is useful for cases where you need real-time reactions to domain events.
-The hook runs synchronously during the Save operation. Keep its execution fast and non-blocking to avoid slowing down the save process.
+`SetSaveHook` allows your application to register a callback that is triggered synchronously whenever events are saved for an aggregate. This is useful for cases where you need real-time reactions to domain events.
+The hook runs synchronously during the Save operation so the execution should be fast and non-blocking to avoid slowing down the save process.
+
+It's possible to add multiple save hooks for an aggregate and they will run in the order added.
 
 ```go
 aggregate.SetSaveHook(func(events []eventsourcing.Event) {
-    for _, evt := range events {
-        log.Printf("New event saved: %v", evt)
+    for _, event := range events {
+        // handle the event
     }
-}, &OrderAggregate{}, &UserAggregate{})
+}, &Person{})
 ```
 
 ## Snapshot
