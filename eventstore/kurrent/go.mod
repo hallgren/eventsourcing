@@ -6,7 +6,7 @@ toolchain go1.23.7
 
 require (
 	github.com/hallgren/eventsourcing/core v0.4.0
-	github.com/kurrent-io/KurrentDB-Client-Go v1.0.0
+	github.com/kurrent-io/KurrentDB-Client-Go v1.0.1
 	github.com/testcontainers/testcontainers-go v0.38.0
 )
 
