@@ -3,6 +3,7 @@ package aggregate_test
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 
 	"github.com/hallgren/eventsourcing"
@@ -103,8 +104,13 @@ func TestSaveHookAggregateNotRegistered(t *testing.T) {
 }
 
 func TestSaveHook(t *testing.T) {
-	var trigger bool
+	var trigger sync.WaitGroup
 	var event eventsourcing.Event
+
+	// make sure the registers are cleared both before and after this test
+	aggregate.ResetRegister()
+	defer aggregate.ResetRegister()
+
 	es := memory.Create()
 	aggregate.Register(&Person{})
 
@@ -116,19 +122,17 @@ func TestSaveHook(t *testing.T) {
 	if err != nil {
 		t.Fatalf("could not save aggregate, err: %v", err)
 	}
-	if trigger {
-		t.Fatal("post trigger should not be activated")
-	}
 
-	// set post save hooks
+	// set save hooks
 	err = aggregate.SetSaveHook(func(events []eventsourcing.Event) {
-		trigger = true
+		trigger.Done()
 	}, &Person{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	err = aggregate.SetSaveHook(func(events []eventsourcing.Event) {
 		event = events[0]
+		trigger.Done()
 	}, &Person{})
 	if err != nil {
 		t.Fatal(err)
@@ -138,13 +142,17 @@ func TestSaveHook(t *testing.T) {
 	aggregate.Register(&Person{})
 
 	person.GrowOlder()
+
+	// there should be two save hook triggered
+	trigger.Add(2)
+
 	err = aggregate.Save(es, person)
 	if err != nil {
 		t.Fatalf("could not save aggregate, err: %v", err)
 	}
-	if !trigger {
-		t.Fatal("post trigger should be activated")
-	}
+
+	// wait for the save hooks to finish
+	trigger.Wait()
 	if event.Reason() != "AgedOneYear" {
 		t.Fatalf("expected AgedOneYear got %v", event.Reason())
 	}

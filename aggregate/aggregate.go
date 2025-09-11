@@ -90,7 +90,7 @@ func Save(es core.EventStore, a aggregate) error {
 
 	// run save hook functions
 	for _, f := range saveHookMap[aggregateType(a)] {
-		f(root.events)
+		go f(root.Events())
 	}
 
 	// clear the events
