@@ -3,8 +3,8 @@ package aggregate_test
 import (
 	"context"
 	"errors"
-	"sync"
 	"testing"
+	"testing/synctest"
 
 	"github.com/hallgren/eventsourcing"
 	"github.com/hallgren/eventsourcing/aggregate"
@@ -104,56 +104,57 @@ func TestSaveHookAggregateNotRegistered(t *testing.T) {
 }
 
 func TestSaveHook(t *testing.T) {
-	var trigger sync.WaitGroup
-	var event eventsourcing.Event
+	synctest.Test(t, func(t *testing.T) {
+		var event eventsourcing.Event
+		var trigger bool
 
-	// make sure the registers are cleared both before and after this test
-	aggregate.ResetRegister()
-	defer aggregate.ResetRegister()
+		// make sure the registers are cleared both before and after this test
+		aggregate.ResetRegister()
+		defer aggregate.ResetRegister()
 
-	es := memory.Create()
-	aggregate.Register(&Person{})
+		es := memory.Create()
+		aggregate.Register(&Person{})
 
-	person, err := CreatePerson("kalle")
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = aggregate.Save(es, person)
-	if err != nil {
-		t.Fatalf("could not save aggregate, err: %v", err)
-	}
+		person, err := CreatePerson("kalle")
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = aggregate.Save(es, person)
+		if err != nil {
+			t.Fatalf("could not save aggregate, err: %v", err)
+		}
 
-	// set save hooks
-	err = aggregate.SetSaveHook(func(events []eventsourcing.Event) {
-		trigger.Done()
-	}, &Person{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = aggregate.SetSaveHook(func(events []eventsourcing.Event) {
-		event = events[0]
-		trigger.Done()
-	}, &Person{})
-	if err != nil {
-		t.Fatal(err)
-	}
+		// set save hooks
+		err = aggregate.SetSaveHook(func(events []eventsourcing.Event) {
+			trigger = true
+		}, &Person{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = aggregate.SetSaveHook(func(events []eventsourcing.Event) {
+			event = events[0]
+		}, &Person{})
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	// make sure double register does not affect save hook
-	aggregate.Register(&Person{})
+		// make sure double register does not affect save hook
+		aggregate.Register(&Person{})
 
-	person.GrowOlder()
+		person.GrowOlder()
 
-	// there should be two save hook triggered
-	trigger.Add(2)
+		err = aggregate.Save(es, person)
+		if err != nil {
+			t.Fatalf("could not save aggregate, err: %v", err)
+		}
 
-	err = aggregate.Save(es, person)
-	if err != nil {
-		t.Fatalf("could not save aggregate, err: %v", err)
-	}
-
-	// wait for the save hooks to finish
-	trigger.Wait()
-	if event.Reason() != "AgedOneYear" {
-		t.Fatalf("expected AgedOneYear got %v", event.Reason())
-	}
+		// wait for the save hooks to finish
+		synctest.Wait()
+		if event.Reason() != "AgedOneYear" {
+			t.Fatalf("expected AgedOneYear got %v", event.Reason())
+		}
+		if !trigger {
+			t.Fatalf("expected trigger to be true")
+		}
+	})
 }
