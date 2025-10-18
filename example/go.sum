@@ -1,6 +1,2 @@
-github.com/hallgren/eventsourcing v0.8.0 h1:lFMWRdc59+tRwzCzmby8I3qr2WbD1GWqB/ypJrBMbVc=
-github.com/hallgren/eventsourcing v0.8.0/go.mod h1:62QwV0m8wLQM6SZwtuGn4lwA5UUFozFnALyZvFeX9ps=
-github.com/hallgren/eventsourcing v0.8.1 h1:SHefx3Wf2K1ylmGBzykSmt4dRVnDTQGYjODiM69c4uU=
-github.com/hallgren/eventsourcing v0.8.1/go.mod h1:62QwV0m8wLQM6SZwtuGn4lwA5UUFozFnALyZvFeX9ps=
 github.com/hallgren/eventsourcing/core v0.4.0 h1:a11TT3df7JlrZtIogqbGmLGgmeugRavwD8HrLtW1Uxw=
 github.com/hallgren/eventsourcing/core v0.4.0/go.mod h1:rgo2kFwNVCb0bzUub5nOPlUYNlFkp1uUQBEQx5fM3Lk=

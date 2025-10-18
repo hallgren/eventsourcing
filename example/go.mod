@@ -1,6 +1,6 @@
 module github.com/hallgren/eventsourcing/example
 
-go 1.22
+go 1.25
 
 require github.com/hallgren/eventsourcing v0.8.1
 
