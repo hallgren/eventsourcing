@@ -112,11 +112,13 @@ func (s *Postgres) Get(ctx context.Context, id string, aggregateType string, aft
 }
 
 // All iterate over all event in GlobalEvents order
-func (s *Postgres) All(start core.Version, count uint64) (core.Iterator, error) {
-	selectStm := `SELECT seq, id, version, reason, type, timestamp, data, metadata FROM events WHERE seq >= $1 ORDER BY seq ASC LIMIT $2`
-	rows, err := s.db.Query(selectStm, start, count)
-	if err != nil {
-		return nil, err
+func (s *Postgres) All(start core.Version, count uint64) func() (core.Iterator, error) {
+	return func() (core.Iterator, error) {
+		selectStm := `SELECT seq, id, version, reason, type, timestamp, data, metadata FROM events WHERE seq >= $1 ORDER BY seq ASC LIMIT $2`
+		rows, err := s.db.Query(selectStm, start, count)
+		if err != nil {
+			return nil, err
+		}
+		return &iterator{rows: rows}, nil
 	}
-	return &iterator{rows: rows}, nil
 }

@@ -135,11 +135,13 @@ func (s *SQLite) Get(ctx context.Context, id string, aggregateType string, after
 }
 
 // All iterate over all event in GlobalEvents order
-func (s *SQLite) All(start core.Version, count uint64) (core.Iterator, error) {
-	selectStm := `Select seq, id, version, reason, type, timestamp, data, metadata from events where seq >= ? order by seq asc LIMIT ?`
-	rows, err := s.db.Query(selectStm, start, count)
-	if err != nil {
-		return nil, err
+func (s *SQLite) All(start core.Version, count uint64) func() (core.Iterator, error) {
+	return func() (core.Iterator, error) {
+		selectStm := `Select seq, id, version, reason, type, timestamp, data, metadata from events where seq >= ? order by seq asc LIMIT ?`
+		rows, err := s.db.Query(selectStm, start, count)
+		if err != nil {
+			return nil, err
+		}
+		return &iterator{rows: rows}, nil
 	}
-	return &iterator{rows: rows}, nil
 }
