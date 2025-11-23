@@ -33,6 +33,20 @@ func TestSuiteSQLServer(t *testing.T) {
 	testsuite.Test(t, f)
 }
 
+func TestFetchFuncAllSQLServer(t *testing.T) {
+	dsn, closer, err := sqlServer()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closer()
+
+	es, err := sqlServerConnect(dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	testsuite.TestFetchFuncAll(t, es, es.All(0))
+}
+
 func sqlServerConnect(dsn string) (*sql.SQLServer, error) {
 	var db *gosql.DB
 	var err error
