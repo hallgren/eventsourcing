@@ -7,18 +7,21 @@ import (
 	"github.com/hallgren/eventsourcing/core"
 )
 
-type iterator struct {
+type Iterator struct {
 	stream *esdb.ReadStream
 	event  *esdb.ResolvedEvent
 }
 
 // Close closes the stream
-func (i *iterator) Close() {
+func (i *Iterator) Close() {
 	i.stream.Close()
 }
 
 // Next steps to the next event in the stream
-func (i *iterator) Next() bool {
+func (i *Iterator) Next() bool {
+	if i.stream == nil {
+		return false
+	}
 	eventESDB, err := i.stream.Recv()
 	if err != nil {
 		return false
@@ -28,7 +31,7 @@ func (i *iterator) Next() bool {
 }
 
 // Value returns the event from the stream
-func (i *iterator) Value() (core.Event, error) {
+func (i *Iterator) Value() (core.Event, error) {
 	stream := strings.Split(i.event.Event.StreamID, streamSeparator)
 
 	event := core.Event{

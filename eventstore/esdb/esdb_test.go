@@ -56,5 +56,5 @@ func TestSuite(t *testing.T) {
 		return es, func() {
 		}, nil
 	}
-	testsuite.Test(t, f)
+	testsuite.TestEventstore(t, f)
 }
