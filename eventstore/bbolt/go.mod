@@ -11,4 +11,4 @@ require (
 
 require golang.org/x/sys v0.29.0 // indirect
 
-// replace github.com/hallgren/eventsourcing/core => ../../core
+replace github.com/hallgren/eventsourcing/core => ../../core

@@ -171,16 +171,17 @@ func (e *BBolt) Get(ctx context.Context, id string, aggregateType string, afterV
 }
 
 // All iterate over event in GlobalEvents order
-func (e *BBolt) All(start uint64) (core.Iterator, error) {
-	tx, err := e.db.Begin(false)
-	if err != nil {
-		return nil, err
+func (e *BBolt) All(start uint64) core.FetchFunc {
+	return func() (core.Iterator, error) {
+		tx, err := e.db.Begin(false)
+		if err != nil {
+			return nil, err
+		}
+
+		globalBucket := tx.Bucket([]byte(globalEventOrderBucketName))
+		cursor := globalBucket.Cursor()
+		return &iterator{tx: tx, cursor: cursor, startPosition: position(core.Version(start))}, nil
 	}
-
-	globalBucket := tx.Bucket([]byte(globalEventOrderBucketName))
-	cursor := globalBucket.Cursor()
-
-	return &iterator{tx: tx, cursor: cursor, startPosition: position(core.Version(start))}, nil
 }
 
 // Close closes the event stream and the underlying database
