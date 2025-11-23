@@ -10,7 +10,6 @@ import (
 	"github.com/hallgren/eventsourcing/core"
 )
 
-type fetchFunc func() (core.Iterator, error)
 type callbackFunc func(e Event) error
 
 // ErrProjectionAlreadyRunning is returned if Run is called on an already running projection
@@ -18,7 +17,7 @@ var ErrProjectionAlreadyRunning = errors.New("projection is already running")
 
 type Projection struct {
 	running   atomic.Bool
-	fetchF    fetchFunc
+	fetchF    core.FetchFunc
 	callbackF callbackFunc
 	trigger   chan func()
 	Strict    bool // Strict indicate if the projection should return error if the event it fetches is not found in the register
@@ -42,7 +41,7 @@ type ProjectionResult struct {
 }
 
 // Projection creates a projection that will run down an event stream
-func NewProjection(fetchF fetchFunc, callbackF callbackFunc) *Projection {
+func NewProjection(fetchF core.FetchFunc, callbackF callbackFunc) *Projection {
 	projection := Projection{
 		fetchF:    fetchF,
 		callbackF: callbackF,
