@@ -23,3 +23,17 @@ func TestSuite(t *testing.T) {
 	}
 	testsuite.TestEventstore(t, f)
 }
+
+func TestFetchFuncAll(t *testing.T) {
+	dbFile := "bolt.db"
+	es, err := bbolt.New(dbFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		es.Close()
+		os.Remove(dbFile)
+	}()
+
+	testsuite.TestFetchFuncAll(t, es, es.All(0))
+}

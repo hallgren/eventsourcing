@@ -162,24 +162,25 @@ func (e *BBolt) Get(ctx context.Context, id string, aggregateType string, afterV
 	}
 	bucket := tx.Bucket(bucketRef(aggregateType, id))
 	if bucket == nil {
-		tx.Rollback()
-		// no aggregate event stream
-		return core.ZeroIterator{}, nil
+		return &iterator{tx: tx}, nil
 	}
 	cursor := bucket.Cursor()
 	return &iterator{tx: tx, cursor: cursor, startPosition: position(afterVersion)}, nil
 }
 
 // All iterate over event in GlobalEvents order
-func (e *BBolt) All(start uint64) core.FetchFunc {
+func (e *BBolt) All(start core.Version) core.FetchFunc {
 	return func() (core.Iterator, error) {
 		tx, err := e.db.Begin(false)
 		if err != nil {
 			return nil, err
 		}
 
-		globalBucket := tx.Bucket([]byte(globalEventOrderBucketName))
-		cursor := globalBucket.Cursor()
+		bucket := tx.Bucket([]byte(globalEventOrderBucketName))
+		if bucket == nil {
+			return &iterator{tx: tx}, nil
+		}
+		cursor := bucket.Cursor()
 		return &iterator{tx: tx, cursor: cursor, startPosition: position(core.Version(start))}, nil
 	}
 }
