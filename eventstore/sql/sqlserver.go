@@ -135,7 +135,7 @@ ORDER BY version ASC;`
 	if err != nil {
 		return nil, err
 	}
-	return &iterator{rows: rows}, nil
+	return &Iterator{Rows: rows}, nil
 }
 
 // All iterate over all event in GlobalEvents order
@@ -149,5 +149,5 @@ OFFSET 0 ROWS FETCH NEXT @limit ROWS ONLY;`
 	if err != nil {
 		return nil, err
 	}
-	return &iterator{rows: rows}, nil
+	return &Iterator{Rows: rows}, nil
 }

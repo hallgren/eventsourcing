@@ -108,7 +108,7 @@ func (s *Postgres) Get(ctx context.Context, id string, aggregateType string, aft
 	if err != nil {
 		return nil, err
 	}
-	return &iterator{rows: rows}, nil
+	return &Iterator{Rows: rows}, nil
 }
 
 // All iterate over all event in GlobalEvents order
@@ -118,5 +118,5 @@ func (s *Postgres) All(start core.Version, count uint64) (core.Iterator, error) 
 	if err != nil {
 		return nil, err
 	}
-	return &iterator{rows: rows}, nil
+	return &Iterator{Rows: rows}, nil
 }
