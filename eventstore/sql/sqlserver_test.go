@@ -79,5 +79,5 @@ func TestSuiteSQLServer(t *testing.T) {
 			db.Close()
 		}, nil
 	}
-	testsuite.TestEventstore(t, f)
+	testsuite.Test(t, f)
 }

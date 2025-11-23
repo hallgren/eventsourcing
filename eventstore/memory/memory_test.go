@@ -13,7 +13,7 @@ func TestEventStore(t *testing.T) {
 		es := memory.Create()
 		return es, func() { es.Close() }, nil
 	}
-	testsuite.TestEventstore(t, f)
+	testsuite.Test(t, f)
 }
 
 func TestFetchFuncAll(t *testing.T) {

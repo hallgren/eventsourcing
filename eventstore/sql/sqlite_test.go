@@ -16,14 +16,14 @@ func TestSuiteSQLite(t *testing.T) {
 	f := func() (core.EventStore, func(), error) {
 		return eventstore(false)
 	}
-	testsuite.TestEventstore(t, f)
+	testsuite.Test(t, f)
 }
 
 func TestSuiteSQLiteSingelWriter(t *testing.T) {
 	f := func() (core.EventStore, func(), error) {
 		return eventstore(true)
 	}
-	testsuite.TestEventstore(t, f)
+	testsuite.Test(t, f)
 }
 func TestFetchFuncAll(t *testing.T) {
 	es, close, err := eventstore(false)
