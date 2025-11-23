@@ -21,5 +21,5 @@ func TestSuite(t *testing.T) {
 			os.Remove(dbFile)
 		}, nil
 	}
-	testsuite.Test(t, f)
+	testsuite.TestEventstore(t, f)
 }

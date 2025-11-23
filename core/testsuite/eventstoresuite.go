@@ -80,7 +80,7 @@ func testEventOtherAggregate(aggregateID string) core.Event {
 	return core.Event{AggregateID: aggregateID, Version: 1, AggregateType: aggregateType, Timestamp: timestamp, Reason: "FrequentFlierAccountCreated", Data: eventToByte(&FrequentFlierAccountCreated{AccountId: "1234567", OpeningMiles: 10000, OpeningTierPoints: 0})}
 }
 
-func Test(t *testing.T, esFunc eventstoreFunc) {
+func TestEventstore(t *testing.T, esFunc eventstoreFunc) {
 	tests := []struct {
 		title string
 		run   func(es core.EventStore) error
