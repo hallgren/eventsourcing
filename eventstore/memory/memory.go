@@ -118,7 +118,7 @@ func (m *Memory) All(start core.Version, count uint64) func() (core.Iterator, er
 
 		// no events to fetch
 		if len(events) == 0 {
-			return core.ZeroIterator{}, nil
+			return &iterator{events: []core.Event{}}, nil
 		}
 
 		// next time the function is called it will start from the last fetched event +1
