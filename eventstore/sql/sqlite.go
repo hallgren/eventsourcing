@@ -135,7 +135,7 @@ func (s *SQLite) Get(ctx context.Context, id string, aggregateType string, after
 }
 
 // All iterate over all event in GlobalEvents order
-func (s *SQLite) All(start core.Version, count uint64) core.FetchFunc {
+func (s *SQLite) All(start core.Version, count uint64) core.Fetcher {
 	iter := Iterator{}
 	return func() (core.Iterator, error) {
 		// set start from second call and forward

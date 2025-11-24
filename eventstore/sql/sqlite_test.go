@@ -31,7 +31,7 @@ func TestFetchFuncAll(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer close()
-	testsuite.TestFetchFuncAll(t, es, es.All(0, 10))
+	testsuite.TestFetcherAll(t, es, es.All(0, 10))
 }
 
 func eventstore(singelWriter bool) (*sql.SQLite, func(), error) {

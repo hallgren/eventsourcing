@@ -17,7 +17,7 @@ var ErrProjectionAlreadyRunning = errors.New("projection is already running")
 
 type Projection struct {
 	running   atomic.Bool
-	fetchF    core.FetchFunc
+	fetchF    core.Fetcher
 	callbackF callbackFunc
 	trigger   chan func()
 	Strict    bool // Strict indicate if the projection should return error if the event it fetches is not found in the register
@@ -41,7 +41,7 @@ type ProjectionResult struct {
 }
 
 // Projection creates a projection that will run down an event stream
-func NewProjection(fetchF core.FetchFunc, callbackF callbackFunc) *Projection {
+func NewProjection(fetchF core.Fetcher, callbackF callbackFunc) *Projection {
 	projection := Projection{
 		fetchF:    fetchF,
 		callbackF: callbackF,

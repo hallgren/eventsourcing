@@ -169,7 +169,7 @@ func (e *BBolt) Get(ctx context.Context, id string, aggregateType string, afterV
 }
 
 // All iterate over event in GlobalEvents order
-func (e *BBolt) All(start core.Version) core.FetchFunc {
+func (e *BBolt) All(start core.Version) core.Fetcher {
 	return func() (core.Iterator, error) {
 		tx, err := e.db.Begin(false)
 		if err != nil {

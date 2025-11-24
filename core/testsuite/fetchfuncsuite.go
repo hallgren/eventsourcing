@@ -6,7 +6,7 @@ import (
 	"github.com/hallgren/eventsourcing/core"
 )
 
-func TestFetchFuncAll(t *testing.T, es core.EventStore, fetchFunc core.FetchFunc) {
+func TestFetcherAll(t *testing.T, es core.EventStore, fetchFunc core.Fetcher) {
 	aggregateID := AggregateID()
 	events := testEvents(aggregateID)
 	err := es.Save(events)

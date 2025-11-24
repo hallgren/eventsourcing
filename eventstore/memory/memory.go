@@ -109,7 +109,7 @@ func (e *Memory) globalEvents(start core.Version, count uint64) ([]core.Event, e
 }
 
 // All iterate over all events in GlobalEvents order
-func (m *Memory) All(start core.Version, count uint64) core.FetchFunc {
+func (m *Memory) All(start core.Version, count uint64) core.Fetcher {
 	return func() (core.Iterator, error) {
 		events, err := m.globalEvents(start, count)
 		if err != nil {

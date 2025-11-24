@@ -35,5 +35,5 @@ func TestFetchFuncAll(t *testing.T) {
 		os.Remove(dbFile)
 	}()
 
-	testsuite.TestFetchFuncAll(t, es, es.All(0))
+	testsuite.TestFetcherAll(t, es, es.All(0))
 }

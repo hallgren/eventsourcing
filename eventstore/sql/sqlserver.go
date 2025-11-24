@@ -139,7 +139,7 @@ ORDER BY version ASC;`
 }
 
 // All iterate over all event in GlobalEvents order
-func (s *SQLServer) All(start core.Version) core.FetchFunc {
+func (s *SQLServer) All(start core.Version) core.Fetcher {
 	return func() (core.Iterator, error) {
 		selectStm := `SELECT seq, id, version, reason, type, timestamp, data, metadata
 FROM [events]

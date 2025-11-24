@@ -44,7 +44,7 @@ func TestFetchFuncAllSQLServer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	testsuite.TestFetchFuncAll(t, es, es.All(0))
+	testsuite.TestFetcherAll(t, es, es.All(0))
 }
 
 func sqlServerConnect(dsn string) (*sql.SQLServer, error) {
