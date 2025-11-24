@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	github.com/EventStore/EventStore-Client-Go/v4 v4.2.0
-	github.com/hallgren/eventsourcing/core v0.4.0
+	github.com/hallgren/eventsourcing/core v0.5.0
 	github.com/testcontainers/testcontainers-go v0.40.0
 )
 

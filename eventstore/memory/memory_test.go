@@ -8,10 +8,16 @@ import (
 	"github.com/hallgren/eventsourcing/eventstore/memory"
 )
 
-func TestSuite(t *testing.T) {
+func TestEventStore(t *testing.T) {
 	f := func() (core.EventStore, func(), error) {
 		es := memory.Create()
 		return es, func() { es.Close() }, nil
 	}
 	testsuite.Test(t, f)
+}
+
+func TestFetcherAll(t *testing.T) {
+	es := memory.Create()
+	defer es.Close()
+	testsuite.TestFetcherAll(t, es, es.All(0, 10))
 }

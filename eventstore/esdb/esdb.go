@@ -85,12 +85,12 @@ func (es *ESDB) Get(ctx context.Context, id string, aggregateType string, afterV
 	if err != nil {
 		if err, ok := esdb.FromError(err); !ok {
 			if err.Code() == esdb.ErrorCodeResourceNotFound {
-				return core.ZeroIterator{}, nil
+				return &Iterator{}, nil
 			}
 		}
 		return nil, err
 	}
-	return &iterator{stream: stream}, nil
+	return &Iterator{stream: stream}, nil
 }
 
 func stream(aggregateType, aggregateID string) string {

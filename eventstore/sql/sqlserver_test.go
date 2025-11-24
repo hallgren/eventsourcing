@@ -4,7 +4,6 @@ import (
 	"context"
 	gosql "database/sql"
 	"fmt"
-	"log"
 	"testing"
 	"time"
 
@@ -18,6 +17,55 @@ import (
 )
 
 func TestSuiteSQLServer(t *testing.T) {
+	dsn, closer, err := sqlServer()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closer()
+
+	f := func() (core.EventStore, func(), error) {
+		es, err := sqlServerConnect(dsn)
+		if err != nil {
+			return nil, nil, err
+		}
+		return es, es.Close, nil
+	}
+	testsuite.Test(t, f)
+}
+
+func TestFetchFuncAllSQLServer(t *testing.T) {
+	dsn, closer, err := sqlServer()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closer()
+
+	es, err := sqlServerConnect(dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	testsuite.TestFetcherAll(t, es, es.All(0))
+}
+
+func sqlServerConnect(dsn string) (*sql.SQLServer, error) {
+	var db *gosql.DB
+	var err error
+	for i := 0; i < 10; i++ {
+		// Connect using database/sql
+		db, err = gosql.Open("sqlserver", dsn)
+		// Test the connection
+		if err == nil && db.Ping() == nil {
+			break
+		}
+		time.Sleep(2 * time.Second)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return sql.NewSQLServer(db)
+}
+
+func sqlServer() (string, func(), error) {
 	ctx := context.Background()
 
 	// Start MSSQL container
@@ -36,48 +84,19 @@ func TestSuiteSQLServer(t *testing.T) {
 		Started:          true,
 	})
 	if err != nil {
-		t.Fatalf("Failed to start container: %v", err)
+		return "", nil, err
 	}
-	defer func() {
-		if err := mssqlC.Terminate(ctx); err != nil {
-			log.Printf("Failed to terminate container: %v", err)
-		}
-	}()
 
 	host, err := mssqlC.Host(ctx)
 	if err != nil {
-		t.Fatalf("Failed to get host: %v", err)
+		return "", nil, err
 	}
 
 	port, err := mssqlC.MappedPort(ctx, "1433")
 	if err != nil {
-		t.Fatalf("Failed to get mapped port: %v", err)
+		return "", nil, err
 	}
 
 	dsn := fmt.Sprintf("sqlserver://sa:YourStrong(!)Password@%s:%s?database=master", host, port.Port())
-
-	f := func() (core.EventStore, func(), error) {
-		var db *gosql.DB
-		var err2 error
-		for i := 0; i < 10; i++ {
-			// Connect using database/sql
-			db, err2 = gosql.Open("sqlserver", dsn)
-			// Test the connection
-			if err2 == nil && db.Ping() == nil {
-				break
-			}
-			time.Sleep(2 * time.Second)
-		}
-		if err2 != nil {
-			t.Fatal("Failed to connect to database:", err)
-		}
-		es, err := sql.NewSQLServer(db)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return es, func() {
-			db.Close()
-		}, nil
-	}
-	testsuite.Test(t, f)
+	return dsn, func() { mssqlC.Terminate(ctx) }, nil
 }

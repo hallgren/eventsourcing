@@ -22,6 +22,9 @@ func (i *iterator) Close() {
 }
 
 func (i *iterator) Next() bool {
+	if i.cursor == nil {
+		return false
+	}
 	// first time Next is called go to the start position
 	if i.value == nil {
 		_, i.value = i.cursor.Seek(i.startPosition)

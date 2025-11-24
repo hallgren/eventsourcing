@@ -25,6 +25,14 @@ func TestSuiteSQLiteSingelWriter(t *testing.T) {
 	}
 	testsuite.Test(t, f)
 }
+func TestFetchFuncAll(t *testing.T) {
+	es, close, err := eventstore(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer close()
+	testsuite.TestFetcherAll(t, es, es.All(0))
+}
 
 func eventstore(singelWriter bool) (*sql.SQLite, func(), error) {
 	var es *sql.SQLite

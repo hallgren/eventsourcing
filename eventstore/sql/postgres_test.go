@@ -17,6 +17,37 @@ import (
 )
 
 func TestSuitePostgres(t *testing.T) {
+	dsn, closer, err := postgresServer()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closer()
+
+	f := func() (core.EventStore, func(), error) {
+		es, err := postgreConnect(dsn)
+		if err != nil {
+			return nil, nil, err
+		}
+		return es, es.Close, nil
+	}
+	testsuite.Test(t, f)
+}
+
+func TestFetchFuncAllPostgres(t *testing.T) {
+	dsn, closer, err := postgresServer()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closer()
+	es, err := postgreConnect(dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer es.Close()
+	testsuite.TestFetcherAll(t, es, es.All(0))
+}
+
+func postgresServer() (string, func(), error) {
 	ctx := context.Background()
 
 	// Set up the PostgreSQL container request
@@ -36,9 +67,8 @@ func TestSuitePostgres(t *testing.T) {
 		Started:          true,
 	})
 	if err != nil {
-		t.Fatalf("failed to start container: %v", err)
+		return "", nil, err
 	}
-	defer postgresContainer.Terminate(ctx)
 
 	// Get container host and port
 	host, _ := postgresContainer.Host(ctx)
@@ -46,25 +76,20 @@ func TestSuitePostgres(t *testing.T) {
 
 	// Build the DSN
 	dsn := fmt.Sprintf("host=%s port=%s user=test password=secret dbname=testdb sslmode=disable", host, port.Port())
+	return dsn, func() { postgresContainer.Terminate(ctx) }, nil
 
-	f := func() (core.EventStore, func(), error) {
-		// Connect using database/sql
-		db, err := gosql.Open("postgres", dsn)
-		if err != nil {
-			return nil, nil, fmt.Errorf("db open failed: %w", err)
-		}
-		// Test the connection
-		err = db.Ping()
-		if err != nil {
-			return nil, nil, err
-		}
-		es, err := sql.NewPostgres(db)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return es, func() {
-			db.Close()
-		}, nil
+}
+
+func postgreConnect(dsn string) (*sql.Postgres, error) {
+	// Connect using database/sql
+	db, err := gosql.Open("postgres", dsn)
+	if err != nil {
+		return nil, fmt.Errorf("db open failed: %w", err)
 	}
-	testsuite.Test(t, f)
+	// Test the connection
+	err = db.Ping()
+	if err != nil {
+		return nil, err
+	}
+	return sql.NewPostgres(db)
 }

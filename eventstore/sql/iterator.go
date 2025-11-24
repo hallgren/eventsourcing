@@ -7,23 +7,23 @@ import (
 	"github.com/hallgren/eventsourcing/core"
 )
 
-type iterator struct {
-	rows *sql.Rows
+type Iterator struct {
+	Rows *sql.Rows
 }
 
 // Next return true if there are more data
-func (i *iterator) Next() bool {
-	return i.rows.Next()
+func (i *Iterator) Next() bool {
+	return i.Rows.Next()
 }
 
 // Value return the an event
-func (i *iterator) Value() (core.Event, error) {
+func (i *Iterator) Value() (core.Event, error) {
 	var globalVersion core.Version
 	var version core.Version
 	var id, reason, typ, timestamp string
 	var data, metadata []byte
 
-	if err := i.rows.Scan(&globalVersion, &id, &version, &reason, &typ, &timestamp, &data, &metadata); err != nil {
+	if err := i.Rows.Scan(&globalVersion, &id, &version, &reason, &typ, &timestamp, &data, &metadata); err != nil {
 		return core.Event{}, err
 	}
 
@@ -46,6 +46,6 @@ func (i *iterator) Value() (core.Event, error) {
 }
 
 // Close closes the iterator
-func (i *iterator) Close() {
-	i.rows.Close()
+func (i *Iterator) Close() {
+	i.Rows.Close()
 }
