@@ -326,16 +326,16 @@ If you want more background on projections check out Derek Comartin projections 
 
 ### Projection
 
-A _projection_ is created from the `eventsourcing.NewProjection` function. The method takes a `fetchFunc` and a `callbackFunc` and returns a pointer to the projection.
+A _projection_ is created from the `eventsourcing.NewProjection` function. The method takes a `core.Fetcher` and a `callbackFunc` and returns a pointer to the projection.
 
 ```go
-p := pr.Projection(f fetchFunc, c callbackFunc)
+p := pr.Projection(f core.Fetcher, c callbackFunc)
 ```
 
-The fetchFunc must return `(core.Iterator, error)`, i.e the same signature that event stores return when they return events.
+The core.Fetcher type `func() (core.Iterator, error)`, i.e it return the same signature that event stores return when they return events.
 
 ```go
-type fetchFunc func() (core.Iterator, error)
+type Fetcher func() (core.Iterator, error)
 ```
 
 The `callbackFunc` is called for every iterated event inside the projection. The event is typed and can be handled in the same way as the aggregate `Transition()` method.
