@@ -19,5 +19,5 @@ func TestEventStore(t *testing.T) {
 func TestFetcherAll(t *testing.T) {
 	es := memory.Create()
 	defer es.Close()
-	testsuite.TestFetcherAll(t, es, es.All(0, 10))
+	testsuite.TestFetcher(t, es, es.All(0, 10))
 }
