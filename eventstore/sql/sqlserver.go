@@ -140,7 +140,12 @@ ORDER BY version ASC;`
 
 // All iterate over all event in GlobalEvents order
 func (s *SQLServer) All(start core.Version) core.Fetcher {
+	iter := Iterator{}
 	return func() (core.Iterator, error) {
+		// set start from second call and forward
+		if iter.CurrentGlobalVersion != 0 {
+			start = iter.CurrentGlobalVersion + 1
+		}
 		selectStm := `SELECT seq, id, version, reason, type, timestamp, data, metadata
 FROM [events]
 WHERE seq >= @start
@@ -149,6 +154,7 @@ ORDER BY seq ASC;`
 		if err != nil {
 			return nil, err
 		}
-		return &Iterator{Rows: rows}, nil
+		iter.Rows = rows
+		return &iter, nil
 	}
 }

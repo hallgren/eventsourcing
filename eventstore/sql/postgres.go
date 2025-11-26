@@ -113,12 +113,18 @@ func (s *Postgres) Get(ctx context.Context, id string, aggregateType string, aft
 
 // All iterate over all event in GlobalEvents order
 func (s *Postgres) All(start core.Version) core.Fetcher {
+	iter := Iterator{}
 	return func() (core.Iterator, error) {
+		// set start from second call and forward
+		if iter.CurrentGlobalVersion != 0 {
+			start = iter.CurrentGlobalVersion + 1
+		}
 		selectStm := `SELECT seq, id, version, reason, type, timestamp, data, metadata FROM events WHERE seq >= $1 ORDER BY seq ASC`
 		rows, err := s.db.Query(selectStm, start)
 		if err != nil {
 			return nil, err
 		}
-		return &Iterator{Rows: rows}, nil
+		iter.Rows = rows
+		return &iter, nil
 	}
 }

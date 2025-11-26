@@ -8,7 +8,8 @@ import (
 )
 
 type Iterator struct {
-	Rows *sql.Rows
+	Rows                 *sql.Rows
+	CurrentGlobalVersion core.Version
 }
 
 // Next return true if there are more data
@@ -42,6 +43,7 @@ func (i *Iterator) Value() (core.Event, error) {
 		Metadata:      metadata,
 		Reason:        reason,
 	}
+	i.CurrentGlobalVersion = globalVersion
 	return event, nil
 }
 

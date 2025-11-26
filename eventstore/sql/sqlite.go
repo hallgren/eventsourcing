@@ -138,12 +138,16 @@ func (s *SQLite) Get(ctx context.Context, id string, aggregateType string, after
 func (s *SQLite) All(start core.Version) core.Fetcher {
 	iter := Iterator{}
 	return func() (core.Iterator, error) {
+		// set start from second call and forward
+		if iter.CurrentGlobalVersion != 0 {
+			start = iter.CurrentGlobalVersion + 1
+		}
 		selectStm := `Select seq, id, version, reason, type, timestamp, data, metadata from events where seq >= ? order by seq asc`
 		rows, err := s.db.Query(selectStm, start)
 		if err != nil {
 			return nil, err
 		}
-		iter = Iterator{Rows: rows}
+		iter.Rows = rows
 		return &iter, nil
 	}
 }

@@ -33,7 +33,7 @@ func TestSuitePostgres(t *testing.T) {
 	testsuite.Test(t, f)
 }
 
-func TestFetchFuncAllPostgres(t *testing.T) {
+func TestFetcherAllPostgres(t *testing.T) {
 	dsn, closer, err := postgresServer()
 	if err != nil {
 		t.Fatal(err)

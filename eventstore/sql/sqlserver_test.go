@@ -33,7 +33,7 @@ func TestSuiteSQLServer(t *testing.T) {
 	testsuite.Test(t, f)
 }
 
-func TestFetchFuncAllSQLServer(t *testing.T) {
+func TestFetcherAllSQLServer(t *testing.T) {
 	dsn, closer, err := sqlServer()
 	if err != nil {
 		t.Fatal(err)
@@ -44,6 +44,7 @@ func TestFetchFuncAllSQLServer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer es.Close()
 	testsuite.TestFetcher(t, es, es.All(0))
 }
 
