@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	github.com/denisenkom/go-mssqldb v0.12.3
-	github.com/hallgren/eventsourcing/core v0.5.0
+	github.com/hallgren/eventsourcing/core v0.5.1
 	github.com/lib/pq v1.10.9
 	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/testcontainers/testcontainers-go v0.40.0
@@ -69,4 +69,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/hallgren/eventsourcing/core => ../../core
+// replace github.com/hallgren/eventsourcing/core => ../../core

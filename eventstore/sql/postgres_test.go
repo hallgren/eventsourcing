@@ -44,7 +44,7 @@ func TestFetchFuncAllPostgres(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer es.Close()
-	testsuite.TestFetcherAll(t, es, es.All(0))
+	testsuite.TestFetcher(t, es, es.All(0))
 }
 
 func postgresServer() (string, func(), error) {
