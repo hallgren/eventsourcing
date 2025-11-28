@@ -5,7 +5,7 @@ go 1.23
 toolchain go1.23.6
 
 require (
-	github.com/hallgren/eventsourcing/core v0.5.0
+	github.com/hallgren/eventsourcing/core v0.5.1
 	go.etcd.io/bbolt v1.4.3
 )
 
