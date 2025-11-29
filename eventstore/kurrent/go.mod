@@ -3,7 +3,7 @@ module github.com/hallgren/eventsourcing/eventstore/kurrent
 go 1.24.0
 
 require (
-	github.com/hallgren/eventsourcing/core v0.5.0
+	github.com/hallgren/eventsourcing/core v0.5.2
 	github.com/kurrent-io/KurrentDB-Client-Go v1.1.0
 	github.com/testcontainers/testcontainers-go v0.40.0
 )
@@ -69,4 +69,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/hallgren/eventsourcing/core => ../../core
+// replace github.com/hallgren/eventsourcing/core => ../../core
