@@ -21,11 +21,13 @@ func TestFetcher(t *testing.T, es core.EventStore, fetcher core.Fetcher) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer iter.Close()
 	err = verify(iter, globalVersion, events)
 	if err != nil {
+		iter.Close()
 		t.Fatal(err)
 	}
+	iter.Close()
+
 	// set the globalVersion to the length of the events as not all event stores update the
 	// globalVersion on the events after they are saved
 	globalVersion = core.Version(len(events))
