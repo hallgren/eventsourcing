@@ -9,7 +9,7 @@ import (
 	"github.com/hallgren/eventsourcing/eventstore/bbolt"
 )
 
-func TestSuite(t *testing.T) {
+func TestEventStoreSuite(t *testing.T) {
 	f := func() (core.EventStore, func(), error) {
 		dbFile := "bolt.db"
 		es, err := bbolt.New(dbFile)
@@ -22,4 +22,18 @@ func TestSuite(t *testing.T) {
 		}, nil
 	}
 	testsuite.Test(t, f)
+}
+
+func TestFetchFuncAll(t *testing.T) {
+	dbFile := "bolt.db"
+	es, err := bbolt.New(dbFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		es.Close()
+		os.Remove(dbFile)
+	}()
+
+	testsuite.TestFetcher(t, es, es.All(0))
 }

@@ -85,12 +85,12 @@ func (es *Kurrent) Get(ctx context.Context, id string, aggregateType string, aft
 	if err != nil {
 		if err, ok := kurrentdb.FromError(err); !ok {
 			if err.Code() == kurrentdb.ErrorCodeResourceNotFound {
-				return core.ZeroIterator{}, nil
+				return &Iterator{}, nil
 			}
 		}
 		return nil, err
 	}
-	return &iterator{stream: stream}, nil
+	return &Iterator{Stream: stream}, nil
 }
 
 func stream(aggregateType, aggregateID string) string {

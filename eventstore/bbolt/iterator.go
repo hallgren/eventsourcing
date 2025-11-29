@@ -9,19 +9,23 @@ import (
 	"go.etcd.io/bbolt"
 )
 
-type iterator struct {
-	tx            *bbolt.Tx
-	cursor        *bbolt.Cursor
-	startPosition []byte
-	value         []byte
+type Iterator struct {
+	tx                   *bbolt.Tx
+	cursor               *bbolt.Cursor
+	startPosition        []byte
+	value                []byte
+	CurrentGlobalVersion core.Version
 }
 
 // Close closes the iterator
-func (i *iterator) Close() {
+func (i *Iterator) Close() {
 	i.tx.Rollback()
 }
 
-func (i *iterator) Next() bool {
+func (i *Iterator) Next() bool {
+	if i.cursor == nil {
+		return false
+	}
 	// first time Next is called go to the start position
 	if i.value == nil {
 		_, i.value = i.cursor.Seek(i.startPosition)
@@ -36,7 +40,7 @@ func (i *iterator) Next() bool {
 }
 
 // Next return the next event
-func (i *iterator) Value() (core.Event, error) {
+func (i *Iterator) Value() (core.Event, error) {
 	bEvent := boltEvent{}
 	err := json.Unmarshal(i.value, &bEvent)
 	if err != nil {
@@ -53,5 +57,6 @@ func (i *iterator) Value() (core.Event, error) {
 		Data:          bEvent.Data,
 		Reason:        bEvent.Reason,
 	}
+	i.CurrentGlobalVersion = core.Version(bEvent.GlobalVersion)
 	return event, nil
 }

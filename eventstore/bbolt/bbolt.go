@@ -162,25 +162,37 @@ func (e *BBolt) Get(ctx context.Context, id string, aggregateType string, afterV
 	}
 	bucket := tx.Bucket(bucketRef(aggregateType, id))
 	if bucket == nil {
-		tx.Rollback()
-		// no aggregate event stream
-		return core.ZeroIterator{}, nil
+		return &Iterator{tx: tx}, nil
 	}
 	cursor := bucket.Cursor()
-	return &iterator{tx: tx, cursor: cursor, startPosition: position(afterVersion)}, nil
+	return &Iterator{tx: tx, cursor: cursor, startPosition: position(afterVersion)}, nil
 }
 
 // All iterate over event in GlobalEvents order
-func (e *BBolt) All(start uint64) (core.Iterator, error) {
-	tx, err := e.db.Begin(false)
-	if err != nil {
-		return nil, err
+func (e *BBolt) All(start core.Version) core.Fetcher {
+	iter := Iterator{}
+	return func() (core.Iterator, error) {
+		tx, err := e.db.Begin(false)
+		if err != nil {
+			return nil, err
+		}
+
+		bucket := tx.Bucket([]byte(globalEventOrderBucketName))
+		if bucket == nil {
+			return &Iterator{tx: tx}, nil
+		}
+		// set start from second call and forward
+		if iter.CurrentGlobalVersion != 0 {
+			// dont add 1 to CurrentGlobalVersion as the index is zero based
+			start = iter.CurrentGlobalVersion
+		}
+		cursor := bucket.Cursor()
+		iter.tx = tx
+		iter.cursor = cursor
+		iter.startPosition = position(core.Version(start))
+		return &iter, nil
+		//return &iter{tx: tx, cursor: cursor, startPosition: position(core.Version(start))}, nil
 	}
-
-	globalBucket := tx.Bucket([]byte(globalEventOrderBucketName))
-	cursor := globalBucket.Cursor()
-
-	return &iterator{tx: tx, cursor: cursor, startPosition: position(core.Version(start))}, nil
 }
 
 // Close closes the event stream and the underlying database

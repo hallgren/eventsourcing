@@ -7,19 +7,22 @@ import (
 	"github.com/kurrent-io/KurrentDB-Client-Go/kurrentdb"
 )
 
-type iterator struct {
-	stream *kurrentdb.ReadStream
+type Iterator struct {
+	Stream *kurrentdb.ReadStream
 	event  *kurrentdb.ResolvedEvent
 }
 
 // Close closes the stream
-func (i *iterator) Close() {
-	i.stream.Close()
+func (i *Iterator) Close() {
+	i.Stream.Close()
 }
 
 // Next steps to the next event in the stream
-func (i *iterator) Next() bool {
-	event, err := i.stream.Recv()
+func (i *Iterator) Next() bool {
+	if i.Stream == nil {
+		return false
+	}
+	event, err := i.Stream.Recv()
 	if err != nil {
 		return false
 	}
@@ -28,7 +31,7 @@ func (i *iterator) Next() bool {
 }
 
 // Value returns the event from the stream
-func (i *iterator) Value() (core.Event, error) {
+func (i *Iterator) Value() (core.Event, error) {
 	stream := strings.Split(i.event.Event.StreamID, streamSeparator)
 
 	event := core.Event{

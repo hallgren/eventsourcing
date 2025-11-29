@@ -135,19 +135,26 @@ ORDER BY version ASC;`
 	if err != nil {
 		return nil, err
 	}
-	return &iterator{rows: rows}, nil
+	return &Iterator{Rows: rows}, nil
 }
 
 // All iterate over all event in GlobalEvents order
-func (s *SQLServer) All(start core.Version, count uint64) (core.Iterator, error) {
-	selectStm := `SELECT seq, id, version, reason, type, timestamp, data, metadata
+func (s *SQLServer) All(start core.Version) core.Fetcher {
+	iter := Iterator{}
+	return func() (core.Iterator, error) {
+		// set start from second call and forward
+		if iter.CurrentGlobalVersion != 0 {
+			start = iter.CurrentGlobalVersion + 1
+		}
+		selectStm := `SELECT seq, id, version, reason, type, timestamp, data, metadata
 FROM [events]
-WHERE seq >= @seq
-ORDER BY seq ASC
-OFFSET 0 ROWS FETCH NEXT @limit ROWS ONLY;`
-	rows, err := s.db.Query(selectStm, sql.Named("ses", start), sql.Named("limit", count))
-	if err != nil {
-		return nil, err
+WHERE seq >= @start
+ORDER BY seq ASC;`
+		rows, err := s.db.Query(selectStm, sql.Named("start", start))
+		if err != nil {
+			return nil, err
+		}
+		iter.Rows = rows
+		return &iter, nil
 	}
-	return &iterator{rows: rows}, nil
 }
