@@ -3,7 +3,7 @@ module github.com/hallgren/eventsourcing/snapshotstore/sql
 go 1.24.0
 
 require (
-	github.com/hallgren/eventsourcing/core v0.4.0
+	github.com/hallgren/eventsourcing/core v0.5.2
 	github.com/lib/pq v1.10.9
 	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/testcontainers/testcontainers-go v0.40.0
