@@ -223,9 +223,20 @@ type Encoder interface {
 }
 ```
 
-### Realtime Event Subscription
+### Realtime Event
 
-For now the real time event subscription has been removed as I'm not satisfied with the exported API. Please fill an issue if you want it back.
+`SetSaveHook` allows your application to register a callback that is triggered synchronously whenever events are saved for an aggregate. This is useful for cases where you need real-time reactions to domain events.
+The hook runs synchronously during the Save operation so the execution should be fast and non-blocking to avoid slowing down the save process.
+
+It's possible to add multiple save hooks for an aggregate and they will run in the order added.
+
+```go
+aggregate.SetSaveHook(func(events []eventsourcing.Event) {
+    for _, event := range events {
+        // handle the event
+    }
+}, &Person{})
+```
 
 ## Snapshot
 
