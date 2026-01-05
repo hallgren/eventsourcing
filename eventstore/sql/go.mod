@@ -6,7 +6,7 @@ require (
 	github.com/denisenkom/go-mssqldb v0.12.3
 	github.com/hallgren/eventsourcing/core v0.5.2
 	github.com/lib/pq v1.10.9
-	github.com/mattn/go-sqlite3 v1.14.32
+	github.com/mattn/go-sqlite3 v1.14.33
 	github.com/testcontainers/testcontainers-go v0.40.0
 )
 
