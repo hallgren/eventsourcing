@@ -12,7 +12,6 @@ import (
 	"github.com/hallgren/eventsourcing/aggregate"
 	"github.com/hallgren/eventsourcing/core"
 	"github.com/hallgren/eventsourcing/eventstore/memory"
-	"github.com/hallgren/eventsourcing/internal"
 )
 
 // Person aggregate
@@ -386,7 +385,7 @@ func TestErrorFromCallback(t *testing.T) {
 func TestStrict(t *testing.T) {
 	// setup
 	es := memory.Create()
-	internal.ResetRegister()
+	aggregate.ResetRegister()
 
 	// We do not register the Person aggregate with the Born event attached
 	err := createPersonEvent(es, "kalle", 1)
