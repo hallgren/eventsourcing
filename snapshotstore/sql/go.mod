@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/hallgren/eventsourcing/core v0.5.2
-	github.com/lib/pq v1.11.2
+	github.com/lib/pq v1.12.0
 	github.com/mattn/go-sqlite3 v1.14.37
 	github.com/testcontainers/testcontainers-go v0.41.0
 )
