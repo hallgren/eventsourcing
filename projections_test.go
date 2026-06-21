@@ -399,6 +399,10 @@ func TestStrict(t *testing.T) {
 	})
 
 	_, result := proj.RunOnce()
+	// expect both the ErrProjectionInStrictMode and the wrapped error ErrEventNotRegistered
+	if !errors.Is(result.Error, eventsourcing.ErrProjectionInStrictMode) {
+		t.Fatalf("expected ErrProjectionInStrictMode got %q", err.Error())
+	}
 	if !errors.Is(result.Error, eventsourcing.ErrEventNotRegistered) {
 		t.Fatalf("expected ErrEventNotRegistered got %q", err.Error())
 	}
