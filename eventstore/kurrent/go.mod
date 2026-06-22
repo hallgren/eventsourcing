@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/hallgren/eventsourcing/core v0.5.2
-	github.com/kurrent-io/KurrentDB-Client-Go v1.2.0
+	github.com/kurrent-io/KurrentDB-Client-Go v1.3.0
 	github.com/testcontainers/testcontainers-go v0.42.0
 )
 
