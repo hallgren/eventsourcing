@@ -13,7 +13,10 @@ import (
 
 type RegisterFunc = func(events ...interface{})
 
-// Aggregate interface to use the aggregate root specific methods
+// register holding functions that is triggered when events for an aggregate is saved.
+var saveHookMap = make(map[string][]func(events []eventsourcing.Event))
+
+// aggregate interface to use the aggregate root specific methods
 type aggregate interface {
 	root() *Root
 	Transition(event eventsourcing.Event)
@@ -78,20 +81,52 @@ func Save(es core.EventStore, a aggregate) error {
 	if err != nil {
 		return err
 	}
-	// update the global version on the aggregate
+	// set the global version
 	root.globalVersion = globalVersion
 
-	// set internal properties and reset the events slice
+	// set the  internal version
 	lastEvent := root.events[len(root.events)-1]
 	root.version = lastEvent.Version()
-	root.events = []eventsourcing.Event{}
 
+	// run save hook functions
+	for _, f := range saveHookMap[aggregateType(a)] {
+		f(root.events)
+	}
+
+	// clear the events
+	root.events = []eventsourcing.Event{}
 	return nil
 }
 
 // Register registers the aggregate and its events
 func Register(a aggregate) {
 	internal.GlobalRegister.Register(a)
+
+	// only create new map if the aggregate has not been registered before
+	if _, ok := saveHookMap[aggregateType(a)]; ok {
+		return
+	}
+	saveHookMap[aggregateType(a)] = []func(events []eventsourcing.Event){}
+}
+
+// ResetRegister reset the internal aggregate registers
+// This is mostly used in internal tests to make sure the registers are cleared
+func ResetRegister() {
+	internal.ResetRegister()
+	saveHookMap = make(map[string][]func(events []eventsourcing.Event))
+}
+
+// SetSaveHook enables the application to react in realtime when events are saved from specific aggregates.
+// Note that the function is ran in sync with the Save method and should return as fast as possible.
+// It return error if an aggregate is not registered via the aggregate.Register function.
+func SetSaveHook(f func(events []eventsourcing.Event), aggregates ...aggregate) error {
+	for _, a := range aggregates {
+		if !internal.GlobalRegister.AggregateRegistered(a) {
+			return fmt.Errorf("%s %w when calling the SetSaveHook", aggregateType(a), eventsourcing.ErrAggregateNotRegistered)
+		}
+		saveHookMap[aggregateType(a)] = append(saveHookMap[aggregateType(a)], f)
+	}
+	return nil
 }
 
 // Save events to the event store
