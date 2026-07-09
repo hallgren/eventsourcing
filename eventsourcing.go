@@ -10,7 +10,7 @@ var (
 	// ErrAggregateNotFound returns if events not found for aggregate or aggregate was not based on snapshot from the outside
 	ErrAggregateNotFound = errors.New("aggregate not found")
 
-	// ErrAggregateNotRegistered when saving aggregate when it's not registered in the repository
+	// ErrAggregateNotRegistered when aggregate is not registered via the aggregate.Register method and can be returned by aggregate.Save or aggregate.SetSaveHook
 	ErrAggregateNotRegistered = errors.New("aggregate not registered")
 
 	// ErrEventNotRegistered when saving aggregate and one event is not registered in the repository
