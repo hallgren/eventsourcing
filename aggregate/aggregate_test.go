@@ -2,7 +2,9 @@ package aggregate_test
 
 import (
 	"context"
+	"errors"
 	"testing"
+	"testing/synctest"
 
 	"github.com/hallgren/eventsourcing"
 	"github.com/hallgren/eventsourcing/aggregate"
@@ -49,7 +51,6 @@ func TestLoadAggregateFromSnapshot(t *testing.T) {
 	es := memory.Create()
 	ss := ss.Create()
 	aggregate.Register(&Person{})
-
 	person, err := CreatePerson("kalle")
 	if err != nil {
 		t.Fatal(err)
@@ -68,6 +69,9 @@ func TestLoadAggregateFromSnapshot(t *testing.T) {
 	// add one more event to the person aggregate
 	person.GrowOlder()
 	err = aggregate.Save(es, person)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// load person to person2 from snaphost and events
 	person2 := &Person{}
@@ -89,4 +93,68 @@ func TestLoadNoneExistingAggregate(t *testing.T) {
 	if err != eventsourcing.ErrAggregateNotFound {
 		t.Fatal("could not get aggregate")
 	}
+}
+
+func TestSaveHookAggregateNotRegistered(t *testing.T) {
+	aggregate.ResetRegister()
+	err := aggregate.SetSaveHook(func(events []eventsourcing.Event) {}, &Person{})
+	if !errors.Is(err, eventsourcing.ErrAggregateNotRegistered) {
+		t.Fatalf("expected error eventsourcing.ErrAggregateNotRegistered got %v", err)
+	}
+}
+
+func TestSaveHook(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var event eventsourcing.Event
+		var trigger bool
+
+		// make sure the registers are cleared both before and after this test
+		aggregate.ResetRegister()
+		defer aggregate.ResetRegister()
+
+		es := memory.Create()
+		aggregate.Register(&Person{})
+
+		person, err := CreatePerson("kalle")
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = aggregate.Save(es, person)
+		if err != nil {
+			t.Fatalf("could not save aggregate, err: %v", err)
+		}
+
+		// set save hooks
+		err = aggregate.SetSaveHook(func(events []eventsourcing.Event) {
+			trigger = true
+		}, &Person{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = aggregate.SetSaveHook(func(events []eventsourcing.Event) {
+			event = events[0]
+		}, &Person{})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// make sure double register does not affect save hook
+		aggregate.Register(&Person{})
+
+		person.GrowOlder()
+
+		err = aggregate.Save(es, person)
+		if err != nil {
+			t.Fatalf("could not save aggregate, err: %v", err)
+		}
+
+		// wait for the save hooks to finish
+		synctest.Wait()
+		if event.Reason() != "AgedOneYear" {
+			t.Fatalf("expected AgedOneYear got %v", event.Reason())
+		}
+		if !trigger {
+			t.Fatalf("expected trigger to be true")
+		}
+	})
 }
