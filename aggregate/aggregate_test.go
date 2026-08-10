@@ -2,6 +2,7 @@ package aggregate_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/hallgren/eventsourcing"
@@ -49,7 +50,6 @@ func TestLoadAggregateFromSnapshot(t *testing.T) {
 	es := memory.Create()
 	ss := ss.Create()
 	aggregate.Register(&Person{})
-
 	person, err := CreatePerson("kalle")
 	if err != nil {
 		t.Fatal(err)
@@ -68,6 +68,9 @@ func TestLoadAggregateFromSnapshot(t *testing.T) {
 	// add one more event to the person aggregate
 	person.GrowOlder()
 	err = aggregate.Save(es, person)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// load person to person2 from snaphost and events
 	person2 := &Person{}
@@ -88,5 +91,61 @@ func TestLoadNoneExistingAggregate(t *testing.T) {
 	err := aggregate.Load(context.Background(), es, "none_existing", &p)
 	if err != eventsourcing.ErrAggregateNotFound {
 		t.Fatal("could not get aggregate")
+	}
+}
+
+func TestSaveHookAggregateNotRegistered(t *testing.T) {
+	aggregate.ResetRegister()
+	err := aggregate.SetSaveHook(func(events []eventsourcing.Event) {}, &Person{})
+	if !errors.Is(err, eventsourcing.ErrAggregateNotRegistered) {
+		t.Fatalf("expected error eventsourcing.ErrAggregateNotRegistered got %v", err)
+	}
+}
+
+func TestSaveHook(t *testing.T) {
+	var trigger bool
+	var event eventsourcing.Event
+	es := memory.Create()
+	aggregate.Register(&Person{})
+
+	person, err := CreatePerson("kalle")
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = aggregate.Save(es, person)
+	if err != nil {
+		t.Fatalf("could not save aggregate, err: %v", err)
+	}
+	if trigger {
+		t.Fatal("post trigger should not be activated")
+	}
+
+	// set post save trigger functions
+	err = aggregate.SetSaveHook(func(events []eventsourcing.Event) {
+		trigger = true
+	}, &Person{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = aggregate.SetSaveHook(func(events []eventsourcing.Event) {
+		event = events[0]
+	}, &Person{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// make sure double register does not affect save hook
+	aggregate.Register(&Person{})
+
+	person.GrowOlder()
+	err = aggregate.Save(es, person)
+	if err != nil {
+		t.Fatalf("could not save aggregate, err: %v", err)
+	}
+	if !trigger {
+		t.Fatal("post trigger should be activated")
+	}
+	if event.Reason() != "AgedOneYear" {
+		t.Fatalf("expected AgedOneYear got %v", event.Reason())
 	}
 }
