@@ -176,7 +176,7 @@ The only thing an event store handles are events, and it must implement the foll
 Save(events []core.Event) error
 
 // fetches events based on identifier and type but also after a specific version. The version is used to load events that happened after a snapshot was taken.
-Get(id string, aggregateType string, afterVersion core.Version) (core.Iterator, error)
+Get(ctx context.Context, id string, aggregateType string, afterVersion core.Version) (core.Iterator, error)
 ```
 
 There are four implementations in this repository.

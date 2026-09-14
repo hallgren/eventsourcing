@@ -2,6 +2,7 @@ package aggregate
 
 import (
 	"reflect"
+	"sync"
 	"time"
 
 	"github.com/hallgren/eventsourcing"
@@ -48,17 +49,18 @@ func TrackChangeWithMetadata(a aggregate, data interface{}, metadata map[string]
 	a.Transition(event)
 }
 
-// buildFromHistory builds the aggregate state from events
-func buildFromHistory(a aggregate, events []eventsourcing.Event) {
+// buildFromHistory builds the aggregate state from a single historic event.
+// It's called once per event while replaying an aggregate's history, so it
+// intentionally avoids wrapping the event in a slice to prevent an allocation
+// per replayed event.
+func buildFromHistory(a aggregate, event eventsourcing.Event) {
 	root := a.root()
-	for _, event := range events {
-		a.Transition(event)
-		//Set the aggregate ID
-		root.id = event.AggregateID()
-		// Make sure the aggregate is in the correct version (the last event)
-		root.version = event.Version()
-		root.globalVersion = event.GlobalVersion()
-	}
+	a.Transition(event)
+	//Set the aggregate ID
+	root.id = event.AggregateID()
+	// Make sure the aggregate is in the correct version (the last event)
+	root.version = event.Version()
+	root.globalVersion = event.GlobalVersion()
 }
 
 func (ar *Root) nextVersion() core.Version {
@@ -101,14 +103,9 @@ func (ar *Root) GlobalVersion() eventsourcing.Version {
 
 // Events return the aggregate events from the aggregate
 // make a copy of the slice preventing outsiders modifying events.
-//
-//nolint:gosimple // for some reason copy does not work
 func (ar *Root) Events() []eventsourcing.Event {
 	e := make([]eventsourcing.Event, len(ar.events))
-	// convert internal event to external event
-	for i, event := range ar.events {
-		e[i] = event
-	}
+	copy(e, ar.events)
 	return e
 }
 
@@ -118,5 +115,15 @@ func (ar *Root) UnsavedEvents() bool {
 }
 
 func aggregateType(a interface{}) string {
-	return reflect.TypeOf(a).Elem().Name()
+	t := reflect.TypeOf(a).Elem()
+	if name, ok := aggregateTypeCache.Load(t); ok {
+		return name.(string)
+	}
+	name := t.Name()
+	aggregateTypeCache.Store(t, name)
+	return name
 }
+
+// aggregateTypeCache caches the reflect-derived aggregate type name per
+// concrete type, avoiding repeated reflection on every TrackChange/Load/Save call.
+var aggregateTypeCache sync.Map
