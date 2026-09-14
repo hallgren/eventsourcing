@@ -14,10 +14,15 @@ type Event struct {
 	event    core.Event // internal event
 	data     interface{}
 	metadata map[string]interface{}
+	reason   string
 }
 
 func NewEvent(e core.Event, data interface{}, metadata map[string]interface{}) Event {
-	return Event{event: e, data: data, metadata: metadata}
+	reason := ""
+	if data != nil {
+		reason = reflect.TypeOf(data).Elem().Name()
+	}
+	return Event{event: e, data: data, metadata: metadata, reason: reason}
 }
 
 func (e Event) Data() interface{} {
@@ -37,10 +42,7 @@ func (e Event) AggregateID() string {
 }
 
 func (e Event) Reason() string {
-	if e.data == nil {
-		return ""
-	}
-	return reflect.TypeOf(e.data).Elem().Name()
+	return e.reason
 }
 
 func (e Event) Version() Version {

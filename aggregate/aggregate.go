@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 
 	"github.com/hallgren/eventsourcing"
 	"github.com/hallgren/eventsourcing/core"
@@ -22,10 +21,6 @@ type aggregate interface {
 
 // Load returns the aggregate based on its events
 func Load(ctx context.Context, es core.EventStore, id string, a aggregate) error {
-	if reflect.ValueOf(a).Kind() != reflect.Ptr {
-		return eventsourcing.ErrAggregateNeedsToBeAPointer
-	}
-
 	root := a.root()
 
 	iterator, err := getEvents(ctx, es, id, aggregateType(a), root.Version())
@@ -42,7 +37,7 @@ func Load(ctx context.Context, es core.EventStore, id string, a aggregate) error
 			if err != nil {
 				return err
 			}
-			buildFromHistory(a, []eventsourcing.Event{event})
+			buildFromHistory(a, event)
 		}
 	}
 	if root.Version() == 0 {
@@ -84,7 +79,8 @@ func Save(es core.EventStore, a aggregate) error {
 	// set internal properties and reset the events slice
 	lastEvent := root.events[len(root.events)-1]
 	root.version = lastEvent.Version()
-	root.events = []eventsourcing.Event{}
+	// reuse the underlying array capacity instead of allocating a new empty slice
+	root.events = root.events[:0]
 
 	return nil
 }
@@ -103,9 +99,14 @@ func saveEvents(eventStore core.EventStore, events []eventsourcing.Event) (event
 		if err != nil {
 			return 0, err
 		}
-		metadata, err := internal.EventEncoder.Serialize(event.Metadata())
-		if err != nil {
-			return 0, err
+		// avoid serializing/storing an empty "null" payload for events
+		// without metadata, saving both the allocation and the bytes
+		var metadata []byte
+		if len(event.Metadata()) > 0 {
+			metadata, err = internal.EventEncoder.Serialize(event.Metadata())
+			if err != nil {
+				return 0, err
+			}
 		}
 
 		esEvent := core.Event{

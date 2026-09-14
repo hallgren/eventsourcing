@@ -3,7 +3,6 @@ package aggregate
 import (
 	"context"
 	"errors"
-	"reflect"
 
 	"github.com/hallgren/eventsourcing"
 	"github.com/hallgren/eventsourcing/core"
@@ -28,9 +27,6 @@ type aggregateSnapshot interface {
 // LoadSnapshot build the aggregate based on its snapshot data not including its events.
 // Beware that it could be more events that has happened after the snapshot was taken
 func LoadSnapshot(ctx context.Context, ss core.SnapshotStore, id string, s snapshot) error {
-	if reflect.ValueOf(s).Kind() != reflect.Ptr {
-		return eventsourcing.ErrAggregateNeedsToBeAPointer
-	}
 	err := getSnapshot(ctx, ss, id, s)
 	if err != nil && errors.Is(err, core.ErrSnapshotNotFound) {
 		return eventsourcing.ErrAggregateNotFound

@@ -35,16 +35,13 @@ func (i *Iterator) Value() (Event, error) {
 	if err != nil {
 		return Event{}, err
 	}
-	metadata := make(map[string]interface{})
+	var metadata map[string]interface{}
 	if event.Metadata != nil {
+		metadata = make(map[string]interface{})
 		err = internal.EventEncoder.Deserialize(event.Metadata, &metadata)
 		if err != nil {
 			return Event{}, err
 		}
 	}
-	return Event{
-		event:    event,
-		data:     data,
-		metadata: metadata,
-	}, nil
+	return NewEvent(event, data, metadata), nil
 }
