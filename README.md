@@ -124,7 +124,7 @@ type Event struct {
 
 ### Aggregate ID
 
-The identifier on the aggregate is default set by a random generated string via the crypt/rand pkg. It is possible to change the default behavior in two ways.
+The identifier on the aggregate is by default set to a randomly generated string using the `crypto/rand` package. It is possible to change the default behavior in two ways.
 
 * Set a specific id on the aggregate via the SetID func.
 
@@ -149,7 +149,7 @@ aggregate.SetIDFunc(f)
 ## Save/Load Aggregate
 
 To save and load aggregates there are exported functions on the aggregate package. `core.EventStore` is an interface exposing the actual storage system. More on that in later sections.
-The `aggregate` interface is automatically applied on the application defined aggregate when `aggregate.Root` is embedded. 
+Embedding `aggregate.Root` provides aggregate root behavior; your aggregate must also implement `Transition` and `Register` to satisfy the aggregate interface.
 
 ```go
 // Save stores the aggregate events in the supplied event store
@@ -163,7 +163,7 @@ To be able to save and load aggregates they have to be registered and each aggre
 the `aggregate.Register` function.
 
 ```go
-// the person aggregate has to be registered in the repository
+// register the person aggregate and its event types
 aggregate.Register(&Person{})
 ```
 
@@ -198,16 +198,16 @@ External event stores:
 ### Custom event store
 
 If you want to store events in a database beside the already implemented event stores you can implement, or provide, another event store. It has to implement the `core.EventStore` 
-interface to support the eventsourcing.EventRepository.
+interface to support the event sourcing repository.
 
 ```go
 type EventStore interface {
     Save(events []core.Event) error
-    Get(id string, aggregateType string, afterVersion core.Version) (core.Iterator, error)
+    Get(ctx context.Context, id string, aggregateType string, afterVersion core.Version) (core.Iterator, error)
 }
 ```
 
-The event store needs to import the `github.com/hallgren/eventsourcing/core` module that expose the `core.Event`, `core.Version` and `core.Iterator` types.
+The event store needs to import `github.com/hallgren/eventsourcing/core` module, which expose the `core.Event`, `core.Version`, and `core.Iterator` types. This is the `core.EventStore` interface used by this module.
 
 ### Encoder
 
@@ -277,8 +277,8 @@ To fix this there are optional callback methods that can be added to the aggrega
 
 ```go
 type snapshot interface {
-	SerializeSnapshot(SerializeFunc) ([]byte, error)
-	DeserializeSnapshot(DeserializeFunc, []byte) error
+	SerializeSnapshot(aggregate.SnapshotMarshal) ([]byte, error)
+	DeserializeSnapshot(aggregate.SnapshotUnmarshal, []byte) error
 }
 ```
 
@@ -299,7 +299,7 @@ type PersonSnapshot struct {
 // callback that maps the aggregate to the snapshot struct with the exported property
 func (s *Person) SerializeSnapshot(m aggregate.SnapshotMarshal) ([]byte, error) {
 	snap := PersonSnapshot{
-		Unexported: s.unexported,
+		UnExported: s.unexported,
 	}
 	return m(snap)
 }
@@ -329,7 +329,7 @@ If you want more background on projections check out Derek Comartin projections 
 A _projection_ is created from the `eventsourcing.NewProjection` function. The method takes a `core.Fetcher` and a `callbackFunc` and returns a pointer to the projection.
 
 ```go
-p := pr.Projection(f core.Fetcher, c callbackFunc)
+p := eventsourcing.NewProjection(fetcher, callback)
 ```
 
 The core.Fetcher type `func() (core.Iterator, error)`, i.e it return the same signature that event stores return when they return events.
@@ -380,19 +380,19 @@ RunToEnd(ctx context.Context) ProjectionResult
 
 ```go
 type ProjectionResult struct {
-	Error          		error
-	ProjectionName 		string
-	LastHandledEvent	Event
+	Error            error
+	Name             string
+	LastHandledEvent eventsourcing.Event
 }
 ```
 
 * **Error** Is set if the projection returned an error
-* **ProjectionName** Is the name of the projection
+* **Name** Is the name of the projection
 * **LastHandledEvent** The last successfully handled event (can be useful during debugging)
 
 #### Run
 
-Run will run forever until the event consumer is returning an error or if it's canceled from the outside. When it hits the end of the event stream it will start a timer and sleep the time set in the projection property `Pace`.
+Run will run forever until the event consumer returns an error or the context is canceled. When it hits the end of the event stream it waits for the specified `pace` before polling again.
 
  ```go
  Run(ctx context.Context, pace time.Duration) error
@@ -404,8 +404,8 @@ A running projection can be triggered manually via `TriggerAsync()` or `TriggerS
 
 A projection has a set of properties that can affect its behavior.
 
-* **Strict** - Default true and it will trigger an error if a fetched event is not registered in the event `Register`. This forces all events to be handled by the callbackFunc.
-* **Name** - The name of the projection. Can be useful when debugging multiple running projections. The default name is the index it was created from the projection handler.
+* **Strict** - Defaults to true and returns an error if a fetched event is not registered. When false, unregistered events are skipped; registered events are passed to the callback.
+* **Name** - The name of the projection, useful when debugging multiple running projections. The default is an empty string.
 
 ### Run multiple projections
 
@@ -446,7 +446,7 @@ select {
 }
 ```
 
-The pace of the projection can be changed with the `Pace` property. Default is every 10 seconds.
+The polling pace for projections in the group can be changed with the group's `Pace` property. The default is every 10 seconds. When running a projection directly, set its pace with the `Run` method's `pace` argument.
 
 If the pace is not fast enough for some scenario it's possible to trigger manually.
 
@@ -476,5 +476,5 @@ p1 := eventsourcing.NewProjection(es.All(0, 1), callbackF)
 p2 := eventsourcing.NewProjection(es.All(0, 1), callbackF)
 
 // true make the race return on error in any projection
-result, err := eventsourcing.ProjectionsRace(true, r1, r2)
+result, err := eventsourcing.ProjectionsRace(true, p1, p2)
 ```
