@@ -15,6 +15,9 @@ type callbackFunc func(e Event) error
 // ErrProjectionAlreadyRunning is returned if Run is called on an already running projection
 var ErrProjectionAlreadyRunning = errors.New("projection is already running")
 
+// ErrProjectionInStrictMode is returned if an event processed is not registered and the projectin is running in strict mode
+var ErrProjectionInStrictMode = errors.New("event not registered when projection running in strict mode")
+
 type Projection struct {
 	running   atomic.Bool
 	fetchF    core.Fetcher
@@ -162,7 +165,8 @@ func (p *Projection) RunOnce() (bool, ProjectionResult) {
 		if err != nil {
 			if errors.Is(err, ErrEventNotRegistered) {
 				if p.Strict {
-					return false, ProjectionResult{Error: err, Name: p.Name, LastHandledEvent: lastHandledEvent}
+					errStrict := errors.Join(err, ErrProjectionInStrictMode)
+					return false, ProjectionResult{Error: errStrict, Name: p.Name, LastHandledEvent: lastHandledEvent}
 				}
 				continue
 			}
